@@ -6,22 +6,43 @@ export class ProductRepository {
     return prisma.product.findUnique({
       where: { id },
       include: {
-        category: true,
+        category: {
+          select: { id: true, name: true, isActive: true },
+        },
         stocks: {
           include: {
             location: {
               include: { warehouse: true },
             },
           },
+          orderBy: { quantity: "desc" },
         },
-        reorderRules: true,
+        reorderRules: {
+          include: {
+            warehouse: true,
+            location: true,
+          },
+        },
+        _count: {
+          select: {
+            stocks: true,
+            receiptItems: true,
+            deliveryItems: true,
+            transferItems: true,
+            adjustmentItems: true,
+            ledgerEntries: true,
+          },
+        },
       },
     });
   }
 
-  async findBySku(sku: string) {
-    return prisma.product.findUnique({
-      where: { sku },
+  async findBySku(sku: string, excludeId?: string) {
+    return prisma.product.findFirst({
+      where: {
+        sku: { equals: sku.trim(), mode: "insensitive" },
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
       include: { category: true },
     });
   }
@@ -29,7 +50,7 @@ export class ProductRepository {
   async list(params?: {
     search?: string;
     categoryId?: string;
-    isActive?: boolean;
+    status?: "ALL" | "ACTIVE" | "INACTIVE";
     page?: number;
     limit?: number;
   }) {
@@ -38,8 +59,14 @@ export class ProductRepository {
     const skip = (page - 1) * limit;
 
     const where: Prisma.ProductWhereInput = {
-      ...(params?.isActive !== undefined ? { isActive: params.isActive } : {}),
-      ...(params?.categoryId ? { categoryId: params.categoryId } : {}),
+      ...(params?.status === "ACTIVE"
+        ? { isActive: true }
+        : params?.status === "INACTIVE"
+        ? { isActive: false }
+        : {}),
+      ...(params?.categoryId && params.categoryId !== "ALL"
+        ? { categoryId: params.categoryId }
+        : {}),
       ...(params?.search
         ? {
             OR: [
@@ -57,9 +84,18 @@ export class ProductRepository {
         skip,
         take: limit,
         include: {
-          category: true,
+          category: {
+            select: { id: true, name: true },
+          },
           stocks: {
-            include: { location: true },
+            include: {
+              location: {
+                select: { id: true, name: true, code: true, warehouse: { select: { name: true } } },
+              },
+            },
+          },
+          _count: {
+            select: { stocks: true, ledgerEntries: true },
           },
         },
         orderBy: { createdAt: "desc" },
@@ -67,8 +103,17 @@ export class ProductRepository {
       prisma.product.count({ where }),
     ]);
 
+    // Calculate total on-hand quantity per product
+    const enrichedItems = items.map((product) => {
+      const totalStock = product.stocks.reduce((sum, s) => sum + s.quantity, 0);
+      return {
+        ...product,
+        totalStock,
+      };
+    });
+
     return {
-      items,
+      items: enrichedItems,
       total,
       page,
       limit,
@@ -91,12 +136,15 @@ export class ProductRepository {
     return prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
         data: {
-          name: data.name,
-          sku: data.sku,
-          description: data.description,
-          uom: data.uom ?? "Units",
+          name: data.name.trim(),
+          sku: data.sku.trim().toUpperCase(),
+          description: data.description?.trim() || null,
+          uom: data.uom ?? "PCS",
           categoryId: data.categoryId,
           isActive: data.isActive ?? true,
+        },
+        include: {
+          category: true,
         },
       });
 
@@ -109,7 +157,7 @@ export class ProductRepository {
           },
         });
 
-        // Record in ledger
+        // Record initial balance into traceable stock ledger
         await tx.stockLedger.create({
           data: {
             reference: `INIT-${product.sku}`,
@@ -118,7 +166,7 @@ export class ProductRepository {
             destinationLocationId: data.initialStock.locationId,
             quantity: data.initialStock.quantity,
             uom: product.uom,
-            notes: "Initial stock on product creation",
+            notes: "Initial inventory allocation on product creation",
           },
         });
       }
@@ -131,6 +179,7 @@ export class ProductRepository {
     id: string,
     data: {
       name?: string;
+      sku?: string;
       description?: string | null;
       uom?: string;
       categoryId?: string;
@@ -139,28 +188,66 @@ export class ProductRepository {
   ) {
     return prisma.product.update({
       where: { id },
-      data,
-      include: { category: true },
+      data: {
+        ...(data.name !== undefined ? { name: data.name.trim() } : {}),
+        ...(data.sku !== undefined ? { sku: data.sku.trim().toUpperCase() } : {}),
+        ...(data.description !== undefined
+          ? { description: data.description?.trim() || null }
+          : {}),
+        ...(data.uom !== undefined ? { uom: data.uom } : {}),
+        ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
+        ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+      },
+      include: {
+        category: true,
+        stocks: {
+          include: { location: { include: { warehouse: true } } },
+        },
+      },
+    });
+  }
+
+  async hasHistoricalRecords(id: string): Promise<boolean> {
+    const product = await prisma.product.findUnique({
+      where: { id },
+      select: {
+        _count: {
+          select: {
+            stocks: true,
+            receiptItems: true,
+            deliveryItems: true,
+            transferItems: true,
+            adjustmentItems: true,
+            ledgerEntries: true,
+          },
+        },
+      },
+    });
+
+    if (!product) return false;
+
+    const counts = product._count;
+    const totalTransactions =
+      counts.receiptItems +
+      counts.deliveryItems +
+      counts.transferItems +
+      counts.adjustmentItems +
+      counts.ledgerEntries;
+
+    return totalTransactions > 0;
+  }
+
+  async delete(id: string) {
+    return prisma.$transaction(async (tx) => {
+      // Remove stocks and reorder rules if safe
+      await tx.stock.deleteMany({ where: { productId: id } });
+      await tx.reorderRule.deleteMany({ where: { productId: id } });
+      return tx.product.delete({ where: { id } });
     });
   }
 
   async countTotal() {
     return prisma.product.count({ where: { isActive: true } });
-  }
-
-  // Categories
-  async listCategories() {
-    return prisma.category.findMany({
-      include: {
-        parent: true,
-        _count: { select: { products: true } },
-      },
-      orderBy: { name: "asc" },
-    });
-  }
-
-  async createCategory(data: { name: string; description?: string | null; parentId?: string | null }) {
-    return prisma.category.create({ data });
   }
 }
 
