@@ -442,7 +442,41 @@ export default function NewReceiptPage() {
                 ))}
               </select>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Line item storage locations are scoped to this warehouse.
+                Target warehouse facility receiving the shipment.
+              </p>
+            </div>
+
+            {/* Destination Location */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                Default Destination Location <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={destinationLocationId}
+                onChange={(e) => {
+                  const newLocId = e.target.value;
+                  setDestinationLocationId(newLocId);
+                  setItems((prev) =>
+                    prev.map((item) => ({
+                      ...item,
+                      locationId: newLocId,
+                    }))
+                  );
+                }}
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                {warehouseLocations.length === 0 ? (
+                  <option value="">No locations configured</option>
+                ) : (
+                  warehouseLocations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name} ({loc.code})
+                    </option>
+                  ))
+                )}
+              </select>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Putaway storage location for incoming inventory.
               </p>
             </div>
 

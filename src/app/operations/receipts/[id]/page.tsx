@@ -348,14 +348,19 @@ export default function ReceiptDetailPage() {
         {/* Metadata Details Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
           <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 rounded-xl space-y-1">
-            <span className="text-slate-500 dark:text-slate-400 font-medium">Destination Facility</span>
+            <span className="text-slate-500 dark:text-slate-400 font-medium">Destination Facility & Location</span>
             <div className="flex items-center gap-1.5 text-slate-800 dark:text-slate-200 font-semibold">
               <Building2 className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
               <span>{receipt.warehouse?.name || "General Facility"}</span>
             </div>
-            {receipt.warehouse?.code && (
+            {receipt.destinationLocation ? (
+              <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {receipt.destinationLocation.name} ({receipt.destinationLocation.code})
+              </span>
+            ) : receipt.warehouse?.code ? (
               <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">({receipt.warehouse.code})</span>
-            )}
+            ) : null}
           </div>
 
           <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 rounded-xl space-y-1">
