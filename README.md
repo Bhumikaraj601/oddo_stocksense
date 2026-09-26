@@ -231,11 +231,38 @@ npm run build
   - [x] Health check API endpoint (`/api/health`) and Products API route handler
   - [x] Production build and TypeScript validation passing 100%
 
-- [ ] **Phase 2: Core Inventory Workflows & Business Logic** *(Upcoming)*
-  - [ ] Complete authentication session handling (JWT / NextAuth)
-  - [ ] Product & category management CRUD UI
-  - [ ] Receipt validation workflow with automated stock ledger increment
-  - [ ] Delivery order pick/pack workflow with stock reservation & deduction
-  - [ ] Multi-location internal transfer workflow with atomic transaction
-  - [ ] Physical inventory adjustment counting & scrap processing
-  - [ ] Automated low-stock alerts based on Reorder Rules
+- [x] **Phase 2: Authentication & User Management** *(Completed)*
+  - [x] Secure password hashing using `bcryptjs` (salt 12)
+  - [x] Edge-compatible JWT session management via `jose` with secure HTTP-only cookies
+  - [x] Next.js Proxy/Middleware protecting all routes (`/dashboard`, `/products`, `/operations`, `/settings`, `/profile`)
+  - [x] Interactive User Signup (`/signup`) with role selection (`INVENTORY_MANAGER` / `WAREHOUSE_STAFF`)
+  - [x] Interactive User Login (`/login`) with session creation and dashboard redirection
+  - [x] OTP-based Password Reset flow:
+    - [x] `PasswordResetOTP` Prisma model (hashed OTP, 10-min expiration, attempt limits)
+    - [x] Step 1: `/forgot-password` (Email input & OTP generation)
+    - [x] Step 2: `/reset-password` (OTP verification & new password update)
+    - [x] Development mode test OTP console logging & UI helper
+  - [x] My Profile (`/profile`) with account info, name updates, and password change
+  - [x] Header profile dropdown with "My Profile" and "Sign Out" actions
+  - [x] Server-side guards: `requireAuth()` & `requireRole(["INVENTORY_MANAGER", ...])`
+  - [x] Comprehensive automated unit & crypto test suite passing 100%
+
+- [x] **Phase 3: Product & Category Management** *(Completed)*
+  - [x] Product master CRUD with dynamic category relation and controlled Units of Measure
+  - [x] SKU unique validation (case-insensitive) and duplicate prevention
+  - [x] Category directory with case-insensitive unique naming and live product counts
+  - [x] Product search by Name and SKU with database-backed query filters
+  - [x] Category and Status filters (Active / Inactive) with server-side pagination
+  - [x] Product detail page with live "Stock by Location" breakdown table
+  - [x] Optional Initial Stock allocation to valid physical locations with stock ledger audit trail
+  - [x] Safe product deactivation (`isActive: false`) preserving historical inventory integrity
+  - [x] Server-side authorization guards on all API routes and mutations
+  - [x] Automated test suite verifying validation rules, SKU uniqueness, and error handling
+
+- [ ] **Phase 4: Multi-Warehouse, Stock Movements & Operations** *(Upcoming)*
+  - [ ] Receipts / Incoming Shipments from Vendors
+  - [ ] Delivery Orders / Customer Outgoing Shipments
+  - [ ] Internal Warehouse Transfers & Inter-location Movements
+  - [ ] Physical Stock Adjustments & Reconciliation
+  - [ ] Automated Stock Ledger calculations & Low-stock Alerts
+
