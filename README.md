@@ -214,3 +214,78 @@ To run a production build:
 ```bash
 npm run build
 ```
+<<<<<<< HEAD
+=======
+
+---
+
+## 🎯 Phase Status
+
+- [x] **Phase 1: Project Foundation & Architecture** *(Completed)*
+  - [x] Next.js App Router project initialized with TypeScript & Tailwind CSS
+  - [x] PostgreSQL & Prisma ORM configured with all core entities & relations
+  - [x] Clean layered architecture (Routes -> Services -> Repositories -> Database)
+  - [x] Comprehensive Zod validation schemas
+  - [x] Singleton Prisma Client with connection pooling safety
+  - [x] Application Shell with responsive Sidebar, Header, and status indicators
+  - [x] Dashboard with 6 required KPI cards and recent ledger movement table
+  - [x] Clean placeholder routes for all navigation modules
+  - [x] Health check API endpoint (`/api/health`) and Products API route handler
+  - [x] Production build and TypeScript validation passing 100%
+
+- [x] **Phase 2: Authentication & User Management** *(Completed)*
+  - [x] Secure password hashing using `bcryptjs` (salt 12)
+  - [x] Edge-compatible JWT session management via `jose` with secure HTTP-only cookies
+  - [x] Next.js Proxy/Middleware protecting all routes (`/dashboard`, `/products`, `/operations`, `/settings`, `/profile`)
+  - [x] Interactive User Signup (`/signup`) with role selection (`INVENTORY_MANAGER` / `WAREHOUSE_STAFF`)
+  - [x] Interactive User Login (`/login`) with session creation and dashboard redirection
+  - [x] OTP-based Password Reset flow:
+    - [x] `PasswordResetOTP` Prisma model (hashed OTP, 10-min expiration, attempt limits)
+    - [x] Step 1: `/forgot-password` (Email input & OTP generation)
+    - [x] Step 2: `/reset-password` (OTP verification & new password update)
+    - [x] Development mode test OTP console logging & UI helper
+  - [x] My Profile (`/profile`) with account info, name updates, and password change
+  - [x] Header profile dropdown with "My Profile" and "Sign Out" actions
+  - [x] Server-side guards: `requireAuth()` & `requireRole(["INVENTORY_MANAGER", ...])`
+  - [x] Comprehensive automated unit & crypto test suite passing 100%
+
+- [x] **Phase 3: Product & Category Management** *(Completed)*
+  - [x] Product master CRUD with dynamic category relation and controlled Units of Measure
+  - [x] SKU unique validation (case-insensitive) and duplicate prevention
+  - [x] Category directory with case-insensitive unique naming and live product counts
+  - [x] Product search by Name and SKU with database-backed query filters
+  - [x] Category and Status filters (Active / Inactive) with server-side pagination
+  - [x] Product detail page with live "Stock by Location" breakdown table
+  - [x] Optional Initial Stock allocation to valid physical locations with stock ledger audit trail
+  - [x] Safe product deactivation (`isActive: false`) preserving historical inventory integrity
+  - [x] Server-side authorization guards on all API routes and mutations
+  - [x] Automated test suite verifying validation rules, SKU uniqueness, and error handling
+
+- [x] **Phase 4: Warehouse & Location Management** *(Completed)*
+  - [x] Multi-warehouse management (`/settings/warehouses`) with unique warehouse codes and search
+  - [x] Location hierarchy and management (`/settings/warehouses/[id]`) with controlled LocationType
+  - [x] Scoped location codes within warehouses (`warehouseId, code` compound unique)
+  - [x] Product-Location stock availability mapping (`Stock` unique constraint on `productId, locationId`)
+  - [x] Live "Stock by Location" breakdown and aggregate calculation across warehouses
+  - [x] Reusable `WarehouseLocationFilter` component for dynamic warehouse/location scoping
+  - [x] Safe warehouse and location deactivation protecting historical stock and movements
+  - [x] Server-side authorization (`INVENTORY_MANAGER` / `ADMIN`) on all creation & modification endpoints
+  - [x] Automated test suite verifying warehouse validation, location types, and stock queries
+
+- [x] **Phase 5: Receipts / Incoming Stock** *(Completed)*
+  - [x] Supplier entity & lightweight vendor directory with unique vendor codes
+  - [x] Unique, concurrent-safe receipt sequencing (`REC-000001`, `REC-000002`...)
+  - [x] Receipt status lifecycle: `DRAFT` ➔ `READY` ➔ `DONE` or `CANCELED`
+  - [x] Draft receipts enforce zero stock mutation and zero ledger entries
+  - [x] Multi-line item creation with real-time product selector and warehouse-scoped locations
+  - [x] Atomic transactional receipt validation (`$transaction`) crediting stock directly to `(productId, locationId)`
+  - [x] Immutable Stock Ledger entry logging on receipt completion
+  - [x] Strict validation idempotency and race condition prevention
+  - [x] Responsive Receipt List, Creation, and Detail views with confirmation modal
+  - [x] Server-side authorization (`INVENTORY_MANAGER` / `ADMIN`) on all validation & cancellation endpoints
+
+- [ ] **Phase 6: Delivery Orders / Outgoing Stock** *(Upcoming)*
+  - [ ] Customer entity & shipping address directory
+  - [ ] Outgoing Delivery Order lifecycle (`DRAFT` → `WAITING` → `READY` → `DONE`)
+  - [ ] Stock reservation & availability verification
+  - [ ] Atomic stock deduction on delivery validation with Stock Ledger audit logging

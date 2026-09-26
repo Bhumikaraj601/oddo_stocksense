@@ -58,6 +58,7 @@ model User {
 
   // Relationships
   receiptsCreated    Receipt[]          @relation("UserReceipts")
+  receiptsValidated  Receipt[]          @relation("UserValidatedReceipts")
   deliveriesCreated  Delivery[]         @relation("UserDeliveries")
   transfersCreated   InternalTransfer[] @relation("UserTransfers")
   adjustmentsCreated Adjustment[]       @relation("UserAdjustments")
@@ -150,6 +151,7 @@ model Warehouse {
 
   // Relationships
   locations    Location[]
+  receipts     Receipt[]
   reorderRules ReorderRule[]
 
   @@index([name])
@@ -178,6 +180,7 @@ model Location {
   stocks               Stock[]
   reorderRules         ReorderRule[]
   receiptDestinations  Receipt[]          @relation("ReceiptDestinationLocation")
+  receiptItems         ReceiptItem[]      @relation("ReceiptItemLocation")
   deliverySources      Delivery[]         @relation("DeliverySourceLocation")
   transferSources      InternalTransfer[] @relation("TransferSourceLocation")
   transferDestinations InternalTransfer[] @relation("TransferDestinationLocation")
@@ -237,44 +240,84 @@ model ReorderRule {
 }
 
 // ==========================================
+// ==========================================
+// SUPPLIERS & VENDORS
+// ==========================================
+
+model Supplier {
+  id        String    @id @default(uuid())
+  name      String
+  code      String?   @unique
+  email     String?
+  phone     String?
+  address   String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relationships
+  receipts Receipt[]
+
+  @@index([name])
+  @@index([code])
+  @@index([isActive])
+  @@map("suppliers")
+}
+
+// ==========================================
 // INCOMING STOCK / RECEIPTS
 // ==========================================
 
 model Receipt {
   id                    String          @id @default(uuid())
-  referenceNumber       String          @unique
+  referenceNumber       String          @unique // e.g. REC-000001
+  supplierId            String?
+  supplier              Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   supplierName          String
+  warehouseId           String?
+  warehouse             Warehouse?      @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
   status                OperationStatus @default(DRAFT)
   scheduledDate         DateTime?
-  destinationLocationId String
-  destinationLocation   Location        @relation("ReceiptDestinationLocation", fields: [destinationLocationId], references: [id], onDelete: Restrict)
+  destinationLocationId String?
+  destinationLocation   Location?       @relation("ReceiptDestinationLocation", fields: [destinationLocationId], references: [id], onDelete: SetNull)
   createdById           String
   createdBy             User            @relation("UserReceipts", fields: [createdById], references: [id], onDelete: Restrict)
+  validatedById         String?
+  validatedBy           User?           @relation("UserValidatedReceipts", fields: [validatedById], references: [id], onDelete: SetNull)
+  validatedAt           DateTime?
   notes                 String?
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 
   items ReceiptItem[]
 
+  @@index([referenceNumber])
   @@index([status])
+  @@index([supplierId])
+  @@index([warehouseId])
   @@index([destinationLocationId])
+  @@index([createdById])
+  @@index([createdAt])
   @@map("receipts")
 }
 
 model ReceiptItem {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   receiptId        String
-  receipt          Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  receipt          Receipt   @relation(fields: [receiptId], references: [id], onDelete: Cascade)
   productId        String
-  product          Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
-  quantityExpected Float
-  quantityReceived Float    @default(0)
-  uom              String   @default("Units")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  locationId       String?
+  location         Location? @relation("ReceiptItemLocation", fields: [locationId], references: [id], onDelete: SetNull)
+  quantityExpected Float     @default(0)
+  quantityReceived Float     @default(0)
+  uom              String    @default("PCS")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([receiptId])
   @@index([productId])
+  @@index([locationId])
   @@map("receipt_items")
 }
 
