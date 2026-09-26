@@ -91,7 +91,12 @@ async function main() {
   });
 
   const rackA1 = await prisma.location.upsert({
-    where: { code: "WH-MAIN-RACK-A1" },
+    where: {
+      warehouseId_code: {
+        warehouseId: mainWarehouse.id,
+        code: "WH-MAIN-RACK-A1",
+      },
+    },
     update: {},
     create: {
       name: "Rack A1 (Heavy Metals)",
@@ -99,11 +104,17 @@ async function main() {
       warehouseId: mainWarehouse.id,
       type: LocationType.INTERNAL,
       isScrap: false,
+      isActive: true,
     },
   });
 
   const rackB2 = await prisma.location.upsert({
-    where: { code: "WH-MAIN-RACK-B2" },
+    where: {
+      warehouseId_code: {
+        warehouseId: mainWarehouse.id,
+        code: "WH-MAIN-RACK-B2",
+      },
+    },
     update: {},
     create: {
       name: "Rack B2 (Electronics Bay)",
@@ -111,6 +122,7 @@ async function main() {
       warehouseId: mainWarehouse.id,
       type: LocationType.INTERNAL,
       isScrap: false,
+      isActive: true,
     },
   });
 

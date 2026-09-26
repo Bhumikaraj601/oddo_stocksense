@@ -259,10 +259,22 @@ npm run build
   - [x] Server-side authorization guards on all API routes and mutations
   - [x] Automated test suite verifying validation rules, SKU uniqueness, and error handling
 
-- [ ] **Phase 4: Multi-Warehouse, Stock Movements & Operations** *(Upcoming)*
-  - [ ] Receipts / Incoming Shipments from Vendors
-  - [ ] Delivery Orders / Customer Outgoing Shipments
-  - [ ] Internal Warehouse Transfers & Inter-location Movements
-  - [ ] Physical Stock Adjustments & Reconciliation
-  - [ ] Automated Stock Ledger calculations & Low-stock Alerts
+- [x] **Phase 4: Warehouse & Location Management** *(Completed)*
+  - [x] Multi-warehouse management (`/settings/warehouses`) with unique warehouse codes and search
+  - [x] Location hierarchy and management (`/settings/warehouses/[id]`) with controlled LocationType
+  - [x] Scoped location codes within warehouses (`warehouseId, code` compound unique)
+  - [x] Product-Location stock availability mapping (`Stock` unique constraint on `productId, locationId`)
+  - [x] Live "Stock by Location" breakdown and aggregate calculation across warehouses
+  - [x] Reusable `WarehouseLocationFilter` component for dynamic warehouse/location scoping
+  - [x] Safe warehouse and location deactivation protecting historical stock and movements
+  - [x] Server-side authorization (`INVENTORY_MANAGER` / `ADMIN`) on all creation & modification endpoints
+  - [x] Automated test suite verifying warehouse validation, location types, and stock queries
+
+- [ ] **Phase 5: Inventory Operations & Stock Movements** *(Upcoming)*
+  - [ ] Incoming Stock / Receipts workflow (`DRAFT` → `READY` → `DONE`) with automated stock addition
+  - [ ] Outgoing Stock / Delivery Orders workflow with stock reservation & fulfillment
+  - [ ] Internal Warehouse Transfers & Inter-location stock movements
+  - [ ] Physical Stock Adjustments & discrepancy reconciliation
+  - [ ] Comprehensive Stock Ledger audit trail and low-stock alerting engine
+
 
