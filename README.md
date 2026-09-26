@@ -178,6 +178,87 @@ Use `.env.example` as the template.
 
 ---
 
+## 🔐 Password Reset OTP
+
+StockSense uses an OTP-based password reset system.
+
+### Flow
+
+```text
+Forgot Password
+       ↓
+Enter Registered Email
+       ↓
+Generate 6-Digit OTP
+       ↓
+OTP Sent to Email
+       ↓
+Enter OTP
+       ↓
+Verify OTP
+       ↓
+Create New Password
+       ↓
+Password Reset Successful
+```
+
+### OTP Security
+
+* OTP is 6 digits.
+* OTP expires after 10 minutes.
+* OTP is stored as a hash in the database.
+* OTP cannot be reused after successful verification.
+* Invalid or expired OTPs are rejected.
+* Passwords are securely hashed.
+* OTPs are never stored as plain text.
+
+### Email Configuration
+
+StockSense uses Resend for sending password-reset OTP emails.
+
+Add the following variables to `.env.local`:
+
+```env
+RESEND_API_KEY="your-resend-api-key"
+EMAIL_FROM="your-verified-sender@example.com"
+```
+
+Do not commit `.env.local` or the Resend API key to GitHub.
+
+For development, make sure the sender email/domain is configured correctly in Resend.
+
+### Password Reset Email
+
+The user receives an email containing:
+
+```text
+StockSense Password Reset OTP
+
+Your OTP is: 123456
+
+This OTP expires in 10 minutes.
+
+If you did not request a password reset, you can safely ignore this email.
+
+StockSense Team
+```
+
+The actual OTP is generated dynamically and is never hardcoded.
+
+### Development Troubleshooting
+
+If the OTP email is not received:
+
+1. Check the `RESEND_API_KEY`.
+2. Check that `EMAIL_FROM` is a verified sender.
+3. Check the Resend email logs.
+4. Check the recipient's Spam/Junk folder.
+5. Check the server terminal for email-sending errors.
+
+Never expose the Resend API key or OTP in client-side code.
+
+---
+
 ## 🗄️ Database Setup
 
 Create/configure your PostgreSQL database.
