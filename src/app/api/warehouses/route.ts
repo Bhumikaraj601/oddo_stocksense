@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { locationService } from "@/services/location.service";
-import { locationQuerySchema, locationSchema } from "@/lib/validations/warehouse";
+import { warehouseService } from "@/services/warehouse.service";
+import { warehouseQuerySchema, warehouseSchema } from "@/lib/validations/warehouse";
 import { createSuccessResponse } from "@/lib/utils/api-response";
 import { handleApiError } from "@/lib/utils/api-error";
 import { requireAuth, requireRole } from "@/lib/auth/session";
@@ -8,18 +8,16 @@ import { requireAuth, requireRole } from "@/lib/auth/session";
 export async function GET(request: NextRequest) {
   try {
     await requireAuth();
-    const { searchParams } = new URL(request.url);
 
-    const query = locationQuerySchema.parse({
+    const { searchParams } = new URL(request.url);
+    const query = warehouseQuerySchema.parse({
       page: searchParams.get("page") ?? 1,
-      limit: searchParams.get("limit") ?? 50,
-      warehouseId: searchParams.get("warehouseId") ?? undefined,
-      type: searchParams.get("type") ?? "ALL",
-      status: searchParams.get("status") ?? "ALL",
+      limit: searchParams.get("limit") ?? 20,
       search: searchParams.get("search") ?? undefined,
+      status: searchParams.get("status") ?? "ALL",
     });
 
-    const result = await locationService.getLocations(query);
+    const result = await warehouseService.getWarehouses(query);
     return createSuccessResponse(result.data, result.meta);
   } catch (error) {
     return handleApiError(error);
@@ -29,10 +27,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await requireRole(["INVENTORY_MANAGER", "ADMIN"]);
+
     const body = await request.json();
-    const validated = locationSchema.parse(body);
-    const location = await locationService.createLocation(validated);
-    return createSuccessResponse(location, undefined, 201);
+    const validated = warehouseSchema.parse(body);
+    const warehouse = await warehouseService.createWarehouse(validated);
+
+    return createSuccessResponse(warehouse, undefined, 201);
   } catch (error) {
     return handleApiError(error);
   }
