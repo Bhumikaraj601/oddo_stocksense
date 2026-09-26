@@ -40,6 +40,7 @@ export default function NewProductPage() {
   const [description, setDescription] = React.useState("");
   const [categoryId, setCategoryId] = React.useState("");
   const [uom, setUom] = React.useState<UnitOfMeasure>("PCS");
+  const [minimumStock, setMinimumStock] = React.useState<number | "">(0);
   const [hasInitialStock, setHasInitialStock] = React.useState(false);
   const [initialLocationId, setInitialLocationId] = React.useState("");
   const [initialQuantity, setInitialQuantity] = React.useState<number | "">("");
@@ -128,6 +129,7 @@ export default function NewProductPage() {
         description: description.trim() || null,
         categoryId,
         uom,
+        minimumStock: typeof minimumStock === "number" ? Math.max(0, minimumStock) : 0,
         isActive: true,
       };
 
@@ -164,7 +166,7 @@ export default function NewProductPage() {
     <div className="space-y-6 max-w-4xl mx-auto">
       <PageHeader
         title="Add New Product"
-        description="Define master catalog details, SKU code, category, and optional initial stock."
+        description="Define master catalog details, SKU code, category, minimum stock threshold, and optional initial stock."
       >
         <Button asChild variant="outline" size="sm" className="gap-2">
           <Link href="/products">
@@ -193,7 +195,7 @@ export default function NewProductPage() {
               General Information
             </CardTitle>
             <CardDescription className="text-xs">
-              Primary identification fields for the inventory product.
+              Primary identification fields and stock rules for the inventory product.
             </CardDescription>
           </CardHeader>
 
@@ -228,7 +230,7 @@ export default function NewProductPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -277,6 +279,26 @@ export default function NewProductPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Minimum Stock Threshold ({uom})
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={minimumStock}
+                  onChange={(e) =>
+                    setMinimumStock(e.target.value === "" ? "" : Math.max(0, parseFloat(e.target.value) || 0))
+                  }
+                  placeholder="e.g. 50"
+                  className="h-9 text-xs font-mono font-bold"
+                />
+                <p className="text-[10px] text-slate-400">
+                  Triggers &quot;Low Stock&quot; alert when total inventory falls below this quantity.
+                </p>
               </div>
             </div>
 

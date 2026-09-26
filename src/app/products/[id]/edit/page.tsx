@@ -35,6 +35,7 @@ export default function EditProductPage() {
   const [description, setDescription] = React.useState("");
   const [categoryId, setCategoryId] = React.useState("");
   const [uom, setUom] = React.useState<UnitOfMeasure>("PCS");
+  const [minimumStock, setMinimumStock] = React.useState<number | "">(0);
   const [isActive, setIsActive] = React.useState(true);
 
   const [categories, setCategories] = React.useState<CategoryOption[]>([]);
@@ -69,6 +70,7 @@ export default function EditProductPage() {
             setDescription(p.description || "");
             setCategoryId(p.categoryId);
             setUom(p.uom as UnitOfMeasure);
+            setMinimumStock(p.minimumStock ?? 0);
             setIsActive(p.isActive);
           } else {
             setError("Failed to load product data.");
@@ -113,6 +115,7 @@ export default function EditProductPage() {
           description: description.trim() || null,
           categoryId,
           uom,
+          minimumStock: typeof minimumStock === "number" ? Math.max(0, minimumStock) : 0,
           isActive,
         }),
       });
@@ -251,7 +254,7 @@ export default function EditProductPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Category <span className="text-rose-500">*</span>
@@ -286,6 +289,26 @@ export default function EditProductPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Minimum Stock Threshold ({uom})
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={minimumStock}
+                  onChange={(e) =>
+                    setMinimumStock(e.target.value === "" ? "" : Math.max(0, parseFloat(e.target.value) || 0))
+                  }
+                  placeholder="e.g. 50"
+                  className="h-9 text-xs font-mono font-bold"
+                />
+                <p className="text-[10px] text-slate-400">
+                  Triggers &quot;Low Stock&quot; alert when total inventory falls below this quantity.
+                </p>
               </div>
             </div>
 

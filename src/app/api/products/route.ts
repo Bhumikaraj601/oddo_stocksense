@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
       search: searchParams.get("search") ?? undefined,
       categoryId: searchParams.get("categoryId") ?? undefined,
       status: searchParams.get("status") ?? "ALL",
+      stockStatus: searchParams.get("stockStatus") ?? "ALL",
       page: searchParams.get("page") ?? 1,
       limit: searchParams.get("limit") ?? 20,
     });

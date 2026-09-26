@@ -17,4 +17,16 @@ export const ledgerQuerySchema = z.object({
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
-export type LedgerQuery = z.infer<typeof ledgerQuerySchema>;
+export type LedgerQuery = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  productId?: string;
+  operationType?: "ALL" | "RECEIPT" | "DELIVERY" | "INTERNAL_TRANSFER" | "ADJUSTMENT";
+  warehouseId?: string;
+  locationId?: string;
+  startDate?: string;
+  endDate?: string;
+  sortBy?: "createdAt" | "quantity" | "reference" | "operationType";
+  sortOrder?: "asc" | "desc";
+};

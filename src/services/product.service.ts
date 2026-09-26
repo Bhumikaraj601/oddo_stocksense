@@ -18,9 +18,18 @@ export class ProductService {
       search: params?.search,
       categoryId: params?.categoryId,
       status: params?.status,
+      stockStatus: params?.stockStatus,
       page: params?.page,
       limit: params?.limit,
     });
+  }
+
+  async getLowStockProducts() {
+    return productRepository.getLowStockProducts();
+  }
+
+  async getLowStockStats() {
+    return productRepository.countLowStockAndOutOfStock();
   }
 
   async createProduct(input: ProductInput) {
@@ -54,6 +63,7 @@ export class ProductService {
       description: input.description,
       uom: input.uom,
       categoryId: input.categoryId,
+      minimumStock: input.minimumStock ?? 0,
       isActive: input.isActive,
       initialStock: input.initialStock,
     });

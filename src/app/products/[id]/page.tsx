@@ -43,6 +43,7 @@ interface ProductDetail {
   sku: string;
   description: string | null;
   uom: string;
+  minimumStock: number;
   isActive: boolean;
   categoryId: string;
   category: { id: string; name: string };
@@ -149,6 +150,10 @@ export default function ProductDetailPage() {
   const totalStock = product.stocks?.reduce((sum, s) => sum + s.quantity, 0) || 0;
   const totalReserved = product.stocks?.reduce((sum, s) => sum + s.reservedQuantity, 0) || 0;
   const availableStock = totalStock - totalReserved;
+  const minStock = product.minimumStock ?? 0;
+
+  const isOutOfStock = totalStock === 0;
+  const isLowStock = !isOutOfStock && minStock > 0 && totalStock < minStock;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -165,7 +170,7 @@ export default function ProductDetailPage() {
         </Button>
 
         <Button asChild variant="outline" size="sm" className="gap-1.5">
-          <Link href={`/operations/ledger?search=${encodeURIComponent(product.sku)}`}>
+          <Link href={`/operations/move-history?search=${encodeURIComponent(product.sku)}`}>
             <History className="w-4 h-4 text-indigo-500" />
             Movement History
           </Link>
@@ -197,6 +202,43 @@ export default function ProductDetailPage() {
         )}
       </PageHeader>
 
+      {/* Low Stock / Out of Stock Banner */}
+      {isOutOfStock ? (
+        <div className="rounded-xl p-4 bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center justify-between animate-in fade-in-50">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+            <div>
+              <p className="font-bold text-sm text-red-300">OUT OF STOCK</p>
+              <p className="text-[11px] text-red-400/90 mt-0.5">
+                Current inventory balance is 0 {product.uom}. Reorder required immediately.
+              </p>
+            </div>
+          </div>
+          <Link href="/operations/receipts/new">
+            <Button size="sm" className="bg-red-600 hover:bg-red-500 text-white text-xs h-8">
+              Create Receipt
+            </Button>
+          </Link>
+        </div>
+      ) : isLowStock ? (
+        <div className="rounded-xl p-4 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-center justify-between animate-in fade-in-50">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+            <div>
+              <p className="font-bold text-sm text-amber-300">LOW STOCK WARNING</p>
+              <p className="text-[11px] text-amber-400/90 mt-0.5">
+                Current stock ({totalStock} {product.uom}) is below the minimum threshold ({minStock} {product.uom}). Reorder recommended.
+              </p>
+            </div>
+          </div>
+          <Link href="/operations/receipts/new">
+            <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-white text-xs h-8">
+              Reorder Stock
+            </Button>
+          </Link>
+        </div>
+      ) : null}
+
       {/* Action Notification Alert */}
       {actionMessage && (
         <div
@@ -224,24 +266,55 @@ export default function ProductDetailPage() {
       )}
 
       {/* Top Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
           <CardContent className="p-5">
             <p className="text-xs font-medium text-slate-500">Total On-Hand Stock</p>
             <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">
               {formatNumber(totalStock)} <span className="text-sm font-normal text-slate-500">{product.uom}</span>
             </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Across all storage locations</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Across all locations</p>
           </CardContent>
         </Card>
 
         <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
           <CardContent className="p-5">
-            <p className="text-xs font-medium text-slate-500">Available to Promise</p>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-              {formatNumber(availableStock)} <span className="text-sm font-normal text-slate-500">{product.uom}</span>
+            <p className="text-xs font-medium text-slate-500">Minimum Stock Rule</p>
+            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+              {formatNumber(minStock)} <span className="text-sm font-normal text-slate-500">{product.uom}</span>
             </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Unreserved for deliveries</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Reorder trigger threshold</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+          <CardContent className="p-5">
+            <p className="text-xs font-medium text-slate-500">Inventory Status</p>
+            <div className="mt-2">
+              {isOutOfStock ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                  OUT OF STOCK
+                </span>
+              ) : isLowStock ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  LOW STOCK
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  IN STOCK
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              {isOutOfStock
+                ? "No stock available"
+                : isLowStock
+                ? "Below threshold"
+                : "Healthy inventory"}
+            </p>
           </CardContent>
         </Card>
 

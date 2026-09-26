@@ -35,6 +35,7 @@ export const productSchema = z.object({
     message: `Unit of measure must be one of: ${UNITS_OF_MEASURE.join(", ")}`,
   }).default("PCS"),
   categoryId: z.string().uuid("Valid category ID is required"),
+  minimumStock: z.coerce.number().min(0, "Minimum stock cannot be negative").default(0),
   isActive: z.boolean().default(true),
   // Optional initial stock allocation to a specific location
   initialStock: z
@@ -66,6 +67,7 @@ export const updateProductSchema = z.object({
   description: z.string().max(1000).optional().nullable(),
   uom: z.enum(UNITS_OF_MEASURE).optional(),
   categoryId: z.string().uuid("Valid category ID is required").optional(),
+  minimumStock: z.coerce.number().min(0, "Minimum stock cannot be negative").optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -73,12 +75,32 @@ export const productQuerySchema = z.object({
   search: z.string().optional(),
   categoryId: z.string().optional(),
   status: z.enum(["ALL", "ACTIVE", "INACTIVE"]).default("ALL"),
+  stockStatus: z.enum(["ALL", "IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"]).default("ALL"),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
 export type CategoryInput = z.infer<typeof categorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
-export type ProductInput = z.infer<typeof productSchema>;
+export type ProductInput = {
+  name: string;
+  sku: string;
+  description?: string | null;
+  uom?: (typeof UNITS_OF_MEASURE)[number];
+  categoryId: string;
+  minimumStock?: number;
+  isActive?: boolean;
+  initialStock?: {
+    locationId: string;
+    quantity: number;
+  };
+};
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
-export type ProductQueryParams = z.infer<typeof productQuerySchema>;
+export type ProductQueryParams = {
+  search?: string;
+  categoryId?: string;
+  status?: "ALL" | "ACTIVE" | "INACTIVE";
+  stockStatus?: "ALL" | "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+  page?: number;
+  limit?: number;
+};
