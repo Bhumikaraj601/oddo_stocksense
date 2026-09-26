@@ -84,6 +84,28 @@ export function handleApiError(error: unknown): NextResponse {
     );
   }
 
+  // Database Connection / Prisma Initialization Error
+  if (
+    error instanceof Error &&
+    (error.name === "PrismaClientInitializationError" ||
+      error.name === "PrismaClientKnownRequestError" ||
+      error.message?.includes("Can't reach database server") ||
+      error.message?.includes("ECONNREFUSED"))
+  ) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "DATABASE_CONNECTION_ERROR",
+          message:
+            "Database connection error: Unable to reach PostgreSQL server at localhost:5432. Please verify that your PostgreSQL service/container is running and that DATABASE_URL in .env is configured correctly.",
+          details: process.env.NODE_ENV !== "production" ? error.message : null,
+        },
+      },
+      { status: 503 }
+    );
+  }
+
   // Generic fallback error
   return NextResponse.json(
     {
