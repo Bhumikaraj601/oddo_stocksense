@@ -145,11 +145,7 @@ export class AuthService {
     // Store in DB with 10-minute validity and 5 max attempts
     await otpRepository.createOTP(user.id, otpHash, 10);
 
-    // Development-safe inspection logger
-    console.log("====================================================");
-    console.log(`[StockSense Auth] OTP Generated for ${user.email}: ${otp}`);
-    console.log("Valid for 10 minutes (Max 5 attempts)");
-    console.log("====================================================");
+    console.log(`Password reset OTP generated for ${user.email}`);
 
     // Send email using Resend
     let devOtp: string | undefined =
@@ -164,8 +160,7 @@ export class AuthService {
         devOtp = res.devOtp;
       }
     } catch (err: any) {
-      console.error("[AuthService] Email dispatch failed:", err);
-      // In production, notify the user gracefully if delivery truly failed
+      console.error("Email dispatch failed:", err);
       if (process.env.NODE_ENV === "production") {
         throw new ValidationError(
           "Unable to send verification code. Please check email configuration or try again later."

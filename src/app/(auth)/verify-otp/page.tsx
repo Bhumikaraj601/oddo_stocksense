@@ -29,26 +29,11 @@ function VerifyOtpForm() {
 
   const [email, setEmail] = React.useState(searchParams.get("email") || "");
   const [otp, setOtp] = React.useState("");
-  const [devOtpCode, setDevOtpCode] = React.useState<string | null>(
-    searchParams.get("devOtp") || null
-  );
   const [isLoading, setIsLoading] = React.useState(false);
   const [isResending, setIsResending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [resendMessage, setResendMessage] = React.useState<string | null>(null);
   const [cooldown, setCooldown] = React.useState(60);
-
-  // Check sessionStorage for devOtp if not in URL
-  React.useEffect(() => {
-    if (!devOtpCode) {
-      try {
-        const stored = sessionStorage.getItem("stocksense_dev_otp");
-        if (stored) {
-          setDevOtpCode(stored);
-        }
-      } catch (_) {}
-    }
-  }, [devOtpCode]);
 
   // 60-second cooldown timer for resend
   React.useEffect(() => {
@@ -66,7 +51,7 @@ function VerifyOtpForm() {
     setError(null);
 
     if (!email) {
-      setError("Email address is missing. Please go back and enter your email.");
+      setError("Email address is missing. Please enter your email.");
       return;
     }
 
@@ -92,14 +77,8 @@ function VerifyOtpForm() {
         return;
       }
 
-      // Clear dev OTP storage upon successful verification
-      try {
-        sessionStorage.removeItem("stocksense_dev_otp");
-      } catch (_) {}
-
       const resetToken = data.data?.resetToken;
       if (resetToken) {
-        // Redirect to new password page with authorization token
         router.push(
           `/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(
             resetToken
@@ -141,13 +120,6 @@ function VerifyOtpForm() {
         return;
       }
 
-      if (data.data?.devOtp) {
-        setDevOtpCode(data.data.devOtp);
-        try {
-          sessionStorage.setItem("stocksense_dev_otp", data.data.devOtp);
-        } catch (_) {}
-      }
-
       setResendMessage("A new 6-digit verification code has been dispatched to your email.");
       setCooldown(60);
       setIsResending(false);
@@ -173,27 +145,6 @@ function VerifyOtpForm() {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {devOtpCode && (
-          <div className="rounded-xl bg-amber-50 dark:bg-amber-950/40 p-3 border border-amber-200 dark:border-amber-800/50 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 animate-in fade-in-50">
-            <div className="flex items-center gap-2">
-              <span className="text-sm">🔑</span>
-              <div>
-                <p className="font-semibold leading-none">Testing / Dev Code</p>
-                <p className="font-mono font-bold tracking-widest text-amber-950 dark:text-amber-100 text-sm mt-0.5">
-                  {devOtpCode}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOtp(devOtpCode)}
-              className="px-2.5 py-1 text-[11px] font-semibold bg-amber-200/80 hover:bg-amber-300 dark:bg-amber-800/60 dark:hover:bg-amber-700 text-amber-900 dark:text-amber-100 rounded-md transition-colors"
-            >
-              Auto-fill
-            </button>
-          </div>
-        )}
-
         {error && (
           <div className="rounded-xl bg-rose-50 dark:bg-rose-950/40 p-3.5 border border-rose-200 dark:border-rose-800/50 flex items-start gap-2.5 text-xs text-rose-800 dark:text-rose-300 animate-in fade-in-50">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
@@ -316,3 +267,4 @@ export default function VerifyOtpPage() {
     </div>
   );
 }
+

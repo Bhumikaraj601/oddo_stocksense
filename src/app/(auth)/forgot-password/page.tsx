@@ -48,16 +48,7 @@ export default function ForgotPasswordPage() {
         return;
       }
 
-      // Smoothly navigate to OTP verification screen
-      const devOtp = data.data?.devOtp;
-      if (devOtp) {
-        try {
-          sessionStorage.setItem("stocksense_dev_otp", devOtp);
-        } catch (_) {}
-        router.push(`/verify-otp?email=${encodeURIComponent(email)}&devOtp=${encodeURIComponent(devOtp)}`);
-      } else {
-        router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
-      }
+      router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
     } catch (err) {
       setError("An unexpected network error occurred. Please try again.");
       setIsLoading(false);
