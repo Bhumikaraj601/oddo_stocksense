@@ -116,11 +116,12 @@ model Product {
   sku         String   @unique
   description String?
   uom         String   @default("PCS") // Controlled UOM (e.g. PCS, KG, G, L, ML, M, BOX, PACK)
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  categoryId   String
+  category     Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  minimumStock Float    @default(0) // Minimum stock threshold / reorder point
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relationships
   stocks          Stock[]

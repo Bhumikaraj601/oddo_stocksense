@@ -19,6 +19,7 @@ import {
   ChevronDown,
   User,
   LogOut,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 
@@ -45,6 +46,18 @@ const navItems: NavItem[] = [
     title: "Products",
     href: "/products",
     icon: Package,
+    children: [
+      {
+        title: "All Products",
+        href: "/products",
+        icon: Package,
+      },
+      {
+        title: "Low Stock Alerts",
+        href: "/products/low-stock",
+        icon: AlertTriangle,
+      },
+    ],
   },
   {
     title: "Operations",
@@ -101,6 +114,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({
+    Products: true,
     Operations: true,
     Settings: true,
   });

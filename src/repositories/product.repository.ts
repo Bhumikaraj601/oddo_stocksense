@@ -2,8 +2,21 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 
 export class ProductRepository {
+  computeStockStatus(
+    totalStock: number,
+    minimumStock: number
+  ): "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" {
+    if (totalStock <= 0) {
+      return "OUT_OF_STOCK";
+    }
+    if (minimumStock > 0 && totalStock < minimumStock) {
+      return "LOW_STOCK";
+    }
+    return "IN_STOCK";
+  }
+
   async findById(id: string) {
-    return prisma.product.findUnique({
+    const product = await prisma.product.findUnique({
       where: { id },
       include: {
         category: {
@@ -35,6 +48,18 @@ export class ProductRepository {
         },
       },
     });
+
+    if (!product) return null;
+
+    const totalStock = product.stocks.reduce((sum, s) => sum + s.quantity, 0);
+    const minStock = product.minimumStock ?? 0;
+    const stockStatus = this.computeStockStatus(totalStock, minStock);
+
+    return {
+      ...product,
+      totalStock,
+      stockStatus,
+    };
   }
 
   async findBySku(sku: string, excludeId?: string) {
@@ -51,6 +76,7 @@ export class ProductRepository {
     search?: string;
     categoryId?: string;
     status?: "ALL" | "ACTIVE" | "INACTIVE";
+    stockStatus?: "ALL" | "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
     page?: number;
     limit?: number;
   }) {
@@ -78,11 +104,10 @@ export class ProductRepository {
         : {}),
     };
 
-    const [items, total] = await Promise.all([
+    // Fetch products with their current stock balances
+    const [items, totalCount] = await Promise.all([
       prisma.product.findMany({
         where,
-        skip,
-        take: limit,
         include: {
           category: {
             select: { id: true, name: true },
@@ -90,7 +115,12 @@ export class ProductRepository {
           stocks: {
             include: {
               location: {
-                select: { id: true, name: true, code: true, warehouse: { select: { name: true } } },
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                  warehouse: { select: { id: true, name: true, code: true } },
+                },
               },
             },
           },
@@ -103,21 +133,111 @@ export class ProductRepository {
       prisma.product.count({ where }),
     ]);
 
-    // Calculate total on-hand quantity per product
-    const enrichedItems = items.map((product) => {
+    // Calculate total on-hand quantity & stockStatus per product
+    let enrichedItems = items.map((product) => {
       const totalStock = product.stocks.reduce((sum, s) => sum + s.quantity, 0);
+      const minStock = product.minimumStock ?? 0;
+      const stockStatus = this.computeStockStatus(totalStock, minStock);
+
       return {
         ...product,
         totalStock,
+        stockStatus,
       };
     });
 
+    // Apply stockStatus filter in memory if specified
+    if (params?.stockStatus && params.stockStatus !== "ALL") {
+      enrichedItems = enrichedItems.filter(
+        (p) => p.stockStatus === params.stockStatus
+      );
+    }
+
+    const filteredTotal =
+      params?.stockStatus && params.stockStatus !== "ALL"
+        ? enrichedItems.length
+        : totalCount;
+
+    // Paginate enriched items
+    const paginatedItems = enrichedItems.slice(skip, skip + limit);
+
     return {
-      items: enrichedItems,
-      total,
+      items: paginatedItems,
+      total: filteredTotal,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(filteredTotal / limit) || 1,
+    };
+  }
+
+  async getLowStockProducts() {
+    const products = await prisma.product.findMany({
+      where: { isActive: true },
+      include: {
+        category: { select: { id: true, name: true } },
+        stocks: {
+          include: {
+            location: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                warehouse: { select: { id: true, name: true, code: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return products
+      .map((p) => {
+        const totalStock = p.stocks.reduce((sum, s) => sum + s.quantity, 0);
+        const minStock = p.minimumStock ?? 0;
+        const stockStatus = this.computeStockStatus(totalStock, minStock);
+        return {
+          ...p,
+          totalStock,
+          stockStatus,
+        };
+      })
+      .filter((p) => p.stockStatus === "LOW_STOCK" || p.stockStatus === "OUT_OF_STOCK");
+  }
+
+  async countLowStockAndOutOfStock(): Promise<{
+    lowStockCount: number;
+    outOfStockCount: number;
+    combinedCount: number;
+  }> {
+    const products = await prisma.product.findMany({
+      where: { isActive: true },
+      include: {
+        stocks: {
+          select: { quantity: true },
+        },
+      },
+    });
+
+    let lowStockCount = 0;
+    let outOfStockCount = 0;
+
+    for (const p of products) {
+      const totalStock = p.stocks.reduce((sum, s) => sum + s.quantity, 0);
+      const minStock = p.minimumStock ?? 0;
+      const status = this.computeStockStatus(totalStock, minStock);
+
+      if (status === "OUT_OF_STOCK") {
+        outOfStockCount++;
+      } else if (status === "LOW_STOCK") {
+        lowStockCount++;
+      }
+    }
+
+    return {
+      lowStockCount,
+      outOfStockCount,
+      combinedCount: lowStockCount + outOfStockCount,
     };
   }
 
@@ -127,6 +247,7 @@ export class ProductRepository {
     description?: string | null;
     uom?: string;
     categoryId: string;
+    minimumStock?: number;
     isActive?: boolean;
     initialStock?: {
       locationId: string;
@@ -141,6 +262,7 @@ export class ProductRepository {
           description: data.description?.trim() || null,
           uom: data.uom ?? "PCS",
           categoryId: data.categoryId,
+          minimumStock: data.minimumStock ?? 0,
           isActive: data.isActive ?? true,
         },
         include: {
@@ -183,6 +305,7 @@ export class ProductRepository {
       description?: string | null;
       uom?: string;
       categoryId?: string;
+      minimumStock?: number;
       isActive?: boolean;
     }
   ) {
@@ -196,6 +319,7 @@ export class ProductRepository {
           : {}),
         ...(data.uom !== undefined ? { uom: data.uom } : {}),
         ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
+        ...(data.minimumStock !== undefined ? { minimumStock: data.minimumStock } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
       },
       include: {

@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
@@ -12,74 +14,73 @@ import {
   ArrowUpFromLine,
   Shuffle,
   Layers,
-  Database,
   ArrowRight,
   ShieldCheck,
   Plus,
+  Loader2,
+  RefreshCw,
+  Boxes,
 } from "lucide-react";
 import Link from "next/link";
+import { formatNumber, formatDate } from "@/lib/utils";
+
+interface DashboardData {
+  kpis: {
+    totalProducts: number;
+    lowStockCount: number;
+    outOfStockCount: number;
+    pendingReceipts: number;
+    pendingDeliveries: number;
+    internalTransfersCount: number;
+  };
+  recentMovements: Array<{
+    id: string;
+    reference: string;
+    operationType: string;
+    quantity: number;
+    uom: string;
+    createdAt: string;
+    product: { id: string; name: string; sku: string };
+    sourceLocation: { id: string; name: string; warehouse?: { name: string } } | null;
+    destinationLocation: { id: string; name: string; warehouse?: { name: string } } | null;
+  }>;
+}
 
 export default function DashboardPage() {
-  // Placeholder foundation KPI metrics for Phase 1
-  const kpis = {
-    totalProducts: "128",
-    lowStock: "14",
-    outOfStock: "3",
-    pendingReceipts: "8",
-    pendingDeliveries: "12",
-    internalTransfers: "5",
+  const [data, setData] = React.useState<DashboardData | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  const fetchDashboardData = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/dashboard");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          setData(json.data);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load dashboard data:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  const kpis = data?.kpis || {
+    totalProducts: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+    pendingReceipts: 0,
+    pendingDeliveries: 0,
+    internalTransfersCount: 0,
   };
 
-  const placeholderMovements = [
-    {
-      id: "1",
-      reference: "REC-2026-0042",
-      product: "Raw Steel Ingot 50kg",
-      sku: "RAW-STL-050",
-      source: "Vendor (Acme Supplies)",
-      destination: "Main Warehouse / Rack A1",
-      quantity: "+ 250 Units",
-      type: "RECEIPT",
-      status: "DONE",
-      date: "Today, 09:30 AM",
-    },
-    {
-      id: "2",
-      reference: "DEL-2026-0019",
-      product: "Hydraulic Pump Motor 2HP",
-      sku: "ENG-PMP-2HP",
-      source: "Main Warehouse / Rack B3",
-      destination: "Customer (BuildCorp Ltd)",
-      quantity: "- 40 Units",
-      type: "DELIVERY",
-      status: "READY",
-      date: "Today, 08:15 AM",
-    },
-    {
-      id: "3",
-      reference: "TRA-2026-0008",
-      product: "Heavy Duty Bearings 100mm",
-      sku: "BRG-HD-100",
-      source: "Central Storage / Bay 2",
-      destination: "Assembly Floor / Line 1",
-      quantity: "60 Units",
-      type: "INTERNAL_TRANSFER",
-      status: "WAITING",
-      date: "Yesterday",
-    },
-    {
-      id: "4",
-      reference: "ADJ-2026-0004",
-      product: "Silicon Thermal Paste 50g",
-      sku: "CMP-PST-050",
-      source: "Electronics Storage",
-      destination: "Inventory Loss (Scrap)",
-      quantity: "- 5 Units",
-      type: "ADJUSTMENT",
-      status: "DONE",
-      date: "Sep 24, 2026",
-    },
-  ];
+  const combinedLowAndOutOfStock = kpis.lowStockCount + kpis.outOfStockCount;
 
   return (
     <div className="space-y-8">
@@ -88,101 +89,115 @@ export default function DashboardPage() {
         title="Inventory Overview"
         description="StockSense modular inventory management foundation & real-time operation monitor."
       >
+        <Button
+          onClick={fetchDashboardData}
+          variant="outline"
+          size="sm"
+          className="gap-2 text-xs"
+          disabled={isLoading}
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
         <Button asChild variant="outline" size="sm" className="gap-2">
-          <Link href="/operations/ledger">
+          <Link href="/operations/move-history">
             <Layers className="w-4 h-4" />
             Stock Ledger
           </Link>
         </Button>
-        <Button asChild variant="default" size="sm" className="gap-2">
-          <Link href="/products">
+        <Button asChild variant="default" size="sm" className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
+          <Link href="/products/new">
             <Plus className="w-4 h-4" />
             Add Product
           </Link>
         </Button>
       </PageHeader>
 
-      {/* Phase 1 Architecture Readiness Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 p-6 text-white shadow-lg">
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-1 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Phase 1 Active
-              </span>
-              <span className="text-xs text-indigo-200 font-medium">
-                Foundation & Architecture Configured
-              </span>
-            </div>
-            <h2 className="text-xl font-bold tracking-tight">
-              StockSense Modular Core Initialized
-            </h2>
-            <p className="text-xs text-indigo-200/90 leading-relaxed">
-              PostgreSQL schema, Prisma ORM, Zod validation models, and layered
-              service/repository architecture are set up. Ready for Phase 2 functional workflows.
-            </p>
-          </div>
+      {/* Low Stock Warning Banner if reorders are needed */}
+      {combinedLowAndOutOfStock > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/50 dark:bg-amber-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Button
-              asChild
-              variant="secondary"
-              size="sm"
-              className="bg-white text-indigo-950 hover:bg-indigo-50 font-semibold"
-            >
-              <Link href="/api/health" target="_blank" className="gap-2">
-                <Database className="w-4 h-4 text-indigo-600" />
-                Test API Health
-              </Link>
-            </Button>
+            <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                {combinedLowAndOutOfStock} {combinedLowAndOutOfStock === 1 ? "Product Requires" : "Products Require"} Stock Replenishment
+              </h4>
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                {kpis.outOfStockCount} out of stock (0 on-hand) &bull; {kpis.lowStockCount} below minimum safety threshold.
+              </p>
+            </div>
           </div>
+          <Button asChild size="sm" variant="outline" className="border-amber-300 text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900/40 shrink-0">
+            <Link href="/products/low-stock" className="gap-1.5 text-xs font-semibold">
+              View Low Stock Alerts <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </Button>
         </div>
-      </div>
+      )}
 
       {/* 6 Required KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard
-          title="Total Products"
-          value={kpis.totalProducts}
-          description="In active catalog"
-          icon={Package}
-          variant="default"
-        />
-        <KpiCard
-          title="Low Stock"
-          value={kpis.lowStock}
-          description="Below reorder min"
-          icon={AlertTriangle}
-          variant="warning"
-        />
-        <KpiCard
-          title="Out of Stock"
-          value={kpis.outOfStock}
-          description="Needs replenishment"
-          icon={PackageX}
-          variant="danger"
-        />
-        <KpiCard
-          title="Pending Receipts"
-          value={kpis.pendingReceipts}
-          description="Incoming shipments"
-          icon={ArrowDownToLine}
-          variant="info"
-        />
-        <KpiCard
-          title="Pending Deliveries"
-          value={kpis.pendingDeliveries}
-          description="Outgoing orders"
-          icon={ArrowUpFromLine}
-          variant="info"
-        />
-        <KpiCard
-          title="Internal Transfers"
-          value={kpis.internalTransfers}
-          description="Warehouse movements"
-          icon={Shuffle}
-          variant="default"
-        />
+        <Link href="/products" className="transition-transform hover:-translate-y-0.5">
+          <KpiCard
+            title="Total Products"
+            value={isLoading ? "..." : formatNumber(kpis.totalProducts)}
+            description="Active catalog SKUs"
+            icon={Package}
+            variant="default"
+          />
+        </Link>
+
+        <Link href="/products/low-stock" className="transition-transform hover:-translate-y-0.5">
+          <KpiCard
+            title="Low / Out of Stock"
+            value={isLoading ? "..." : formatNumber(combinedLowAndOutOfStock)}
+            description={`${kpis.outOfStockCount} out of stock, ${kpis.lowStockCount} low`}
+            icon={AlertTriangle}
+            variant={combinedLowAndOutOfStock > 0 ? "warning" : "default"}
+          />
+        </Link>
+
+        <Link href="/products?stockStatus=OUT_OF_STOCK" className="transition-transform hover:-translate-y-0.5">
+          <KpiCard
+            title="Out of Stock"
+            value={isLoading ? "..." : formatNumber(kpis.outOfStockCount)}
+            description="0 on-hand stock"
+            icon={PackageX}
+            variant={kpis.outOfStockCount > 0 ? "danger" : "default"}
+          />
+        </Link>
+
+        <Link href="/operations/receipts" className="transition-transform hover:-translate-y-0.5">
+          <KpiCard
+            title="Pending Receipts"
+            value={isLoading ? "..." : formatNumber(kpis.pendingReceipts)}
+            description="Incoming shipments"
+            icon={ArrowDownToLine}
+            variant="info"
+          />
+        </Link>
+
+        <Link href="/operations/deliveries" className="transition-transform hover:-translate-y-0.5">
+          <KpiCard
+            title="Pending Deliveries"
+            value={isLoading ? "..." : formatNumber(kpis.pendingDeliveries)}
+            description="Outgoing customer orders"
+            icon={ArrowUpFromLine}
+            variant="info"
+          />
+        </Link>
+
+        <Link href="/operations/transfers" className="transition-transform hover:-translate-y-0.5">
+          <KpiCard
+            title="Internal Transfers"
+            value={isLoading ? "..." : formatNumber(kpis.internalTransfersCount)}
+            description="Warehouse movements"
+            icon={Shuffle}
+            variant="default"
+          />
+        </Link>
       </div>
 
       {/* Operations Quick Access & Activity Matrix */}
@@ -193,55 +208,75 @@ export default function DashboardPage() {
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
                 <CardTitle className="text-base font-semibold">
-                  Recent Inventory Movements (Ledger)
+                  Recent Inventory Movements (Move History)
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Real-time traceability for receipts, deliveries, and adjustments.
+                  Traceability for receipts, deliveries, transfers, and adjustments.
                 </CardDescription>
               </div>
               <Button asChild variant="ghost" size="sm" className="text-xs text-indigo-600 gap-1">
-                <Link href="/operations/ledger">
+                <Link href="/operations/move-history">
                   View All <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </Button>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 border-y border-slate-200 dark:border-slate-800 font-semibold uppercase tracking-wider">
-                    <tr>
-                      <th className="px-6 py-3">Reference</th>
-                      <th className="px-4 py-3">Product & SKU</th>
-                      <th className="px-4 py-3">Route / Locations</th>
-                      <th className="px-4 py-3">Quantity</th>
-                      <th className="px-4 py-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {placeholderMovements.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
-                        <td className="px-6 py-3.5 font-medium text-indigo-600 dark:text-indigo-400">
-                          {item.reference}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <p className="font-medium text-slate-900 dark:text-slate-100">{item.product}</p>
-                          <p className="text-[11px] text-slate-400">{item.sku}</p>
-                        </td>
-                        <td className="px-4 py-3.5 text-slate-600 dark:text-slate-400">
-                          <p className="truncate max-w-[180px]">{item.source}</p>
-                          <p className="text-[11px] text-slate-400 truncate max-w-[180px]">➔ {item.destination}</p>
-                        </td>
-                        <td className="px-4 py-3.5 font-semibold text-slate-900 dark:text-slate-100">
-                          {item.quantity}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <StatusBadge status={item.status} />
-                        </td>
+              {isLoading ? (
+                <div className="p-8 text-center text-slate-400">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-indigo-600 mb-2" />
+                  <p className="text-xs">Loading latest movements...</p>
+                </div>
+              ) : !data?.recentMovements || data.recentMovements.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 space-y-2">
+                  <Boxes className="w-8 h-8 mx-auto text-slate-300" />
+                  <p className="text-xs">No stock movements recorded yet.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 border-y border-slate-200 dark:border-slate-800 font-semibold uppercase tracking-wider">
+                      <tr>
+                        <th className="px-6 py-3">Reference</th>
+                        <th className="px-4 py-3">Product & SKU</th>
+                        <th className="px-4 py-3">Route / Locations</th>
+                        <th className="px-4 py-3">Quantity</th>
+                        <th className="px-4 py-3">Type</th>
+                        <th className="px-4 py-3">Date</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {data.recentMovements.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
+                          <td className="px-6 py-3.5 font-medium font-mono text-indigo-600 dark:text-indigo-400">
+                            {item.reference}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <p className="font-medium text-slate-900 dark:text-slate-100">{item.product.name}</p>
+                            <p className="text-[11px] font-mono text-slate-400">{item.product.sku}</p>
+                          </td>
+                          <td className="px-4 py-3.5 text-slate-600 dark:text-slate-400">
+                            <p className="truncate max-w-[180px]">
+                              {item.sourceLocation ? `${item.sourceLocation.warehouse?.name ? item.sourceLocation.warehouse.name + " / " : ""}${item.sourceLocation.name}` : "External / Vendor"}
+                            </p>
+                            <p className="text-[11px] text-slate-400 truncate max-w-[180px]">
+                              ➔ {item.destinationLocation ? `${item.destinationLocation.warehouse?.name ? item.destinationLocation.warehouse.name + " / " : ""}${item.destinationLocation.name}` : "External / Customer"}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3.5 font-semibold font-mono text-slate-900 dark:text-slate-100">
+                            {formatNumber(item.quantity)} {item.uom}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <StatusBadge status={item.operationType} />
+                          </td>
+                          <td className="px-4 py-3.5 text-slate-500 text-[11px]">
+                            {formatDate(item.createdAt)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -258,6 +293,24 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2.5">
+              <Link
+                href="/products/low-stock"
+                className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-amber-300 dark:hover:border-amber-800 hover:bg-amber-50/30 dark:hover:bg-amber-950/20 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400 border border-amber-100 dark:border-amber-900">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400">
+                      Low Stock Alerts
+                    </p>
+                    <p className="text-[11px] text-slate-500">{combinedLowAndOutOfStock} items need reordering</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+
               <Link
                 href="/operations/receipts"
                 className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-all group"

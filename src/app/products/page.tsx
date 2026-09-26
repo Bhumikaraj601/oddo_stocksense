@@ -23,6 +23,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Boxes,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { formatNumber } from "@/lib/utils";
@@ -37,6 +38,8 @@ interface ProductItem {
   categoryId: string;
   category: { id: string; name: string };
   totalStock: number;
+  minimumStock: number;
+  stockStatus: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
   createdAt: string;
 }
 
@@ -57,6 +60,7 @@ function ProductsListContent() {
   const search = searchParams.get("search") || "";
   const categoryId = searchParams.get("categoryId") || "ALL";
   const status = searchParams.get("status") || "ALL";
+  const stockStatus = searchParams.get("stockStatus") || "ALL";
   const page = parseInt(searchParams.get("page") || "1", 10);
 
   // Local state
@@ -94,6 +98,7 @@ function ProductsListContent() {
       if (search) query.set("search", search);
       if (categoryId && categoryId !== "ALL") query.set("categoryId", categoryId);
       if (status && status !== "ALL") query.set("status", status);
+      if (stockStatus && stockStatus !== "ALL") query.set("stockStatus", stockStatus);
       query.set("page", page.toString());
       query.set("limit", "15");
 
@@ -111,7 +116,7 @@ function ProductsListContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [search, categoryId, status, page]);
+  }, [search, categoryId, status, stockStatus, page]);
 
   React.useEffect(() => {
     fetchProducts();
@@ -121,7 +126,7 @@ function ProductsListContent() {
   const updateQuery = (updates: Record<string, string | number>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
-      if (value === "ALL" || value === "" || value === 1 && key === "page") {
+      if (value === "ALL" || value === "" || (value === 1 && key === "page")) {
         params.delete(key);
       } else {
         params.set(key, value.toString());
@@ -165,16 +170,48 @@ function ProductsListContent() {
     }
   };
 
+  const renderStockBadge = (product: ProductItem) => {
+    if (product.stockStatus === "OUT_OF_STOCK") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+          🔴 Out of Stock
+        </span>
+      );
+    }
+    if (product.stockStatus === "LOW_STOCK") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800" title="Stock below reorder threshold. Reorder recommended.">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          🟡 Low Stock
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+        🟢 In Stock
+      </span>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Products & Master Catalog"
-        description="Search, filter, manage SKUs, and view stock availability across warehouse locations."
+        description="Search, filter, manage SKUs, track minimum stock thresholds, and view stock availability."
       >
+        <Button asChild variant="outline" size="sm" className="gap-2 border-amber-300 text-amber-800 dark:text-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30">
+          <Link href="/products/low-stock">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            Low Stock Alerts
+          </Link>
+        </Button>
+
         <Button asChild variant="outline" size="sm" className="gap-2">
           <Link href="/settings/categories">
             <FolderTree className="w-4 h-4 text-indigo-500" />
-            Manage Categories
+            Categories
           </Link>
         </Button>
 
@@ -240,6 +277,18 @@ function ProductsListContent() {
                 <Filter className="w-3.5 h-3.5" /> Filters:
               </div>
 
+              {/* Stock Status Filter */}
+              <select
+                value={stockStatus}
+                onChange={(e) => updateQuery({ stockStatus: e.target.value, page: 1 })}
+                className="h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="ALL">All Stock Status</option>
+                <option value="IN_STOCK">🟢 In Stock</option>
+                <option value="LOW_STOCK">🟡 Low Stock</option>
+                <option value="OUT_OF_STOCK">🔴 Out of Stock</option>
+              </select>
+
               {/* Category Filter */}
               <select
                 value={categoryId}
@@ -254,18 +303,18 @@ function ProductsListContent() {
                 ))}
               </select>
 
-              {/* Status Filter */}
+              {/* Active / Inactive Filter */}
               <select
                 value={status}
                 onChange={(e) => updateQuery({ status: e.target.value, page: 1 })}
                 className="h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="ALL">All Status</option>
+                <option value="ALL">All Records</option>
                 <option value="ACTIVE">Active Only</option>
                 <option value="INACTIVE">Inactive Only</option>
               </select>
 
-              {(search || categoryId !== "ALL" || status !== "ALL") && (
+              {(search || categoryId !== "ALL" || status !== "ALL" || stockStatus !== "ALL") && (
                 <Button
                   onClick={() => {
                     setSearchInput("");
@@ -311,7 +360,7 @@ function ProductsListContent() {
                 No Products Found
               </h3>
               <p className="text-xs text-slate-500">
-                {search || categoryId !== "ALL" || status !== "ALL"
+                {search || categoryId !== "ALL" || status !== "ALL" || stockStatus !== "ALL"
                   ? "No products match the selected search or filter criteria."
                   : "Get started by adding your first product to the inventory catalog."}
               </p>
@@ -331,9 +380,10 @@ function ProductsListContent() {
                     <th className="px-6 py-3">Product Name</th>
                     <th className="px-4 py-3">SKU / Code</th>
                     <th className="px-4 py-3">Category</th>
-                    <th className="px-4 py-3">UOM</th>
                     <th className="px-4 py-3">On-Hand Stock</th>
-                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Min Stock</th>
+                    <th className="px-4 py-3">Stock Status</th>
+                    <th className="px-4 py-3">Active</th>
                     <th className="px-6 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -349,7 +399,7 @@ function ProductsListContent() {
                           className="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline flex items-center gap-2"
                         >
                           <Package className="w-4 h-4 text-slate-400 shrink-0" />
-                          <span className="truncate max-w-[220px]">{p.name}</span>
+                          <span className="truncate max-w-[200px]">{p.name}</span>
                         </Link>
                       </td>
                       <td className="px-4 py-3.5 font-mono font-semibold text-indigo-600 dark:text-indigo-400">
@@ -360,11 +410,18 @@ function ProductsListContent() {
                           {p.category?.name || "Uncategorized"}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-slate-600 dark:text-slate-400 font-medium">
-                        {p.uom}
-                      </td>
                       <td className="px-4 py-3.5 font-semibold text-slate-900 dark:text-slate-100">
                         {formatNumber(p.totalStock)} {p.uom}
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-600 dark:text-slate-400 font-mono">
+                        {p.minimumStock > 0 ? (
+                          <span>{formatNumber(p.minimumStock)} {p.uom}</span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {renderStockBadge(p)}
                       </td>
                       <td className="px-4 py-3.5">
                         <Badge
@@ -472,3 +529,4 @@ export default function ProductsPage() {
     </React.Suspense>
   );
 }
+

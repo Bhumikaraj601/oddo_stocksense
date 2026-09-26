@@ -4,26 +4,27 @@ import { DashboardKPIs } from "@/types";
 
 export class DashboardService {
   /**
-   * Retrieves high-level inventory KPIs for the StockSense dashboard.
+   * Retrieves high-level inventory KPIs for the StockSense dashboard based on real PostgreSQL data.
    */
   async getDashboardKPIs(): Promise<DashboardKPIs> {
     const [
       totalProducts,
+      stockStats,
       pendingReceipts,
       pendingDeliveries,
       internalTransfersCount,
     ] = await Promise.all([
       productRepository.countTotal(),
+      productRepository.countLowStockAndOutOfStock(),
       operationRepository.countPendingReceipts(),
       operationRepository.countPendingDeliveries(),
       operationRepository.countInternalTransfers(),
     ]);
 
-    // Initial foundation counts (to be calculated by real-time aggregation in Phase 2)
     return {
       totalProducts,
-      lowStockCount: 0,
-      outOfStockCount: 0,
+      lowStockCount: stockStats.lowStockCount,
+      outOfStockCount: stockStats.outOfStockCount,
       pendingReceipts,
       pendingDeliveries,
       internalTransfersCount,
