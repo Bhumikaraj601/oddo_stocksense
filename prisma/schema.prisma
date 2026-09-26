@@ -62,8 +62,10 @@ model User {
   deliveriesCreated  Delivery[]         @relation("UserDeliveries")
   deliveriesValidated Delivery[]        @relation("UserValidatedDeliveries")
   transfersCreated   InternalTransfer[] @relation("UserTransfers")
-  adjustmentsCreated Adjustment[]       @relation("UserAdjustments")
-  movementsRecorded  StockLedger[]      @relation("UserMovements")
+  transfersValidated InternalTransfer[] @relation("UserValidatedTransfers")
+  adjustmentsCreated   Adjustment[]       @relation("UserAdjustments")
+  adjustmentsValidated Adjustment[]       @relation("UserValidatedAdjustments")
+  movementsRecorded    StockLedger[]      @relation("UserMovements")
   passwordResetOtps  PasswordResetOTP[] @relation("UserPasswordResetOtps")
 
   @@map("users")
@@ -151,10 +153,13 @@ model Warehouse {
   updatedAt   DateTime @updatedAt
 
   // Relationships
-  locations    Location[]
-  receipts     Receipt[]
-  deliveries   Delivery[]
-  reorderRules ReorderRule[]
+  locations       Location[]
+  receipts        Receipt[]
+  deliveries      Delivery[]
+  sourceTransfers InternalTransfer[] @relation("TransferSourceWarehouse")
+  destTransfers   InternalTransfer[] @relation("TransferDestWarehouse")
+  adjustments     Adjustment[]
+  reorderRules    ReorderRule[]
 
   @@index([name])
   @@index([code])
@@ -386,24 +391,36 @@ model DeliveryItem {
 
 model InternalTransfer {
   id                    String          @id @default(uuid())
-  referenceNumber       String          @unique
-  status                OperationStatus @default(DRAFT)
-  scheduledDate         DateTime?
+  referenceNumber       String          @unique // e.g. TRF-000001
+  sourceWarehouseId     String?
+  sourceWarehouse       Warehouse?      @relation("TransferSourceWarehouse", fields: [sourceWarehouseId], references: [id], onDelete: SetNull)
   sourceLocationId      String
   sourceLocation        Location        @relation("TransferSourceLocation", fields: [sourceLocationId], references: [id], onDelete: Restrict)
+  destinationWarehouseId String?
+  destinationWarehouse  Warehouse?      @relation("TransferDestWarehouse", fields: [destinationWarehouseId], references: [id], onDelete: SetNull)
   destinationLocationId String
   destinationLocation   Location        @relation("TransferDestinationLocation", fields: [destinationLocationId], references: [id], onDelete: Restrict)
+  status                OperationStatus @default(DRAFT)
+  scheduledDate         DateTime?
   createdById           String
   createdBy             User            @relation("UserTransfers", fields: [createdById], references: [id], onDelete: Restrict)
+  validatedById         String?
+  validatedBy           User?           @relation("UserValidatedTransfers", fields: [validatedById], references: [id], onDelete: SetNull)
+  validatedAt           DateTime?
   notes                 String?
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 
   items InternalTransferItem[]
 
+  @@index([referenceNumber])
   @@index([status])
+  @@index([sourceWarehouseId])
   @@index([sourceLocationId])
+  @@index([destinationWarehouseId])
   @@index([destinationLocationId])
+  @@index([createdById])
+  @@index([createdAt])
   @@map("internal_transfers")
 }
 
@@ -414,7 +431,7 @@ model InternalTransferItem {
   productId  String
   product    Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
   quantity   Float
-  uom        String           @default("Units")
+  uom        String           @default("PCS")
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
 
@@ -429,20 +446,29 @@ model InternalTransferItem {
 
 model Adjustment {
   id              String          @id @default(uuid())
-  referenceNumber String          @unique
-  status          OperationStatus @default(DRAFT)
+  referenceNumber String          @unique // e.g. ADJ-000001
+  warehouseId     String?
+  warehouse       Warehouse?      @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
   locationId      String
   location        Location        @relation("AdjustmentLocation", fields: [locationId], references: [id], onDelete: Restrict)
+  status          OperationStatus @default(DRAFT)
   reason          String?
   createdById     String
   createdBy       User            @relation("UserAdjustments", fields: [createdById], references: [id], onDelete: Restrict)
+  validatedById   String?
+  validatedBy     User?           @relation("UserValidatedAdjustments", fields: [validatedById], references: [id], onDelete: SetNull)
+  validatedAt     DateTime?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
   items AdjustmentItem[]
 
+  @@index([referenceNumber])
   @@index([status])
+  @@index([warehouseId])
   @@index([locationId])
+  @@index([createdById])
+  @@index([createdAt])
   @@map("adjustments")
 }
 
@@ -452,10 +478,10 @@ model AdjustmentItem {
   adjustment     Adjustment @relation(fields: [adjustmentId], references: [id], onDelete: Cascade)
   productId      String
   product        Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
-  theoreticalQty Float
-  countedQty     Float
-  differenceQty  Float
-  uom            String     @default("Units")
+  theoreticalQty Float      @default(0) // System stock at time of count
+  countedQty     Float      // Physical count
+  differenceQty  Float      @default(0) // countedQty - theoreticalQty
+  uom            String     @default("PCS")
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 

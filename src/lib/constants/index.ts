@@ -88,7 +88,7 @@ export const NAVIGATION_ITEMS = [
       },
       {
         title: "Stock Ledger / History",
-        href: "/operations/ledger",
+        href: "/operations/move-history",
         description: "Traceable ledger of all stock movements",
       },
     ],
