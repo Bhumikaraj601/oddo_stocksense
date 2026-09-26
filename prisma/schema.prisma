@@ -139,34 +139,40 @@ model Product {
 // ==========================================
 
 model Warehouse {
-  id        String   @id @default(uuid())
-  name      String
-  code      String   @unique
-  address   String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  code        String   @unique
+  description String?
+  address     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relationships
   locations    Location[]
   reorderRules ReorderRule[]
 
+  @@index([name])
+  @@index([code])
+  @@index([isActive])
   @@map("warehouses")
 }
 
 model Location {
-  id           String       @id @default(uuid())
-  name         String
-  code         String       @unique
-  type         LocationType @default(INTERNAL)
-  isScrap      Boolean      @default(false)
-  warehouseId  String?
-  warehouse    Warehouse?   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  parentId     String?
-  parent       Location?    @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children     Location[]   @relation("LocationHierarchy")
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id          String       @id @default(uuid())
+  name        String
+  code        String
+  description String?
+  type        LocationType @default(INTERNAL)
+  isScrap     Boolean      @default(false)
+  isActive    Boolean      @default(true)
+  warehouseId String?
+  warehouse   Warehouse?   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      Location?    @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Location[]   @relation("LocationHierarchy")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   // Relationships
   stocks               Stock[]
@@ -179,7 +185,12 @@ model Location {
   sourceMovements      StockLedger[]      @relation("SourceLocationMovements")
   destMovements        StockLedger[]      @relation("DestLocationMovements")
 
+  @@unique([warehouseId, code])
   @@index([warehouseId])
+  @@index([name])
+  @@index([code])
+  @@index([type])
+  @@index([isActive])
   @@map("locations")
 }
 
