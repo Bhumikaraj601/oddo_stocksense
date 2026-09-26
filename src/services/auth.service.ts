@@ -152,15 +152,21 @@ export class AuthService {
     console.log("====================================================");
 
     // Send email using Resend
+    let devOtp: string | undefined =
+      process.env.NODE_ENV !== "production" ? otp : undefined;
+
     try {
-      await sendPasswordResetOtpEmail({
+      const res = await sendPasswordResetOtpEmail({
         to: user.email,
         otp,
       });
+      if (res.devOtp) {
+        devOtp = res.devOtp;
+      }
     } catch (err: any) {
       console.error("[AuthService] Email dispatch failed:", err);
-      // If Resend API key is configured but fails, notify the user gracefully
-      if (process.env.RESEND_API_KEY) {
+      // In production, notify the user gracefully if delivery truly failed
+      if (process.env.NODE_ENV === "production") {
         throw new ValidationError(
           "Unable to send verification code. Please check email configuration or try again later."
         );
@@ -171,6 +177,7 @@ export class AuthService {
       success: true,
       message:
         "If an account exists for this email, a verification code has been sent.",
+      ...(devOtp ? { devOtp } : {}),
     };
   }
 
