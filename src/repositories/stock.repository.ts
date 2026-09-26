@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export class StockRepository {
   async getStock(productId: string, locationId: string) {
@@ -10,10 +11,75 @@ export class StockRepository {
         },
       },
       include: {
-        product: true,
-        location: true,
+        product: {
+          include: { category: true },
+        },
+        location: {
+          include: { warehouse: true },
+        },
       },
     });
+  }
+
+  async listStock(params?: {
+    warehouseId?: string;
+    locationId?: string;
+    productId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 50;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.StockWhereInput = {
+      ...(params?.locationId && params.locationId !== "ALL"
+        ? { locationId: params.locationId }
+        : {}),
+      ...(params?.warehouseId && params.warehouseId !== "ALL"
+        ? { location: { warehouseId: params.warehouseId } }
+        : {}),
+      ...(params?.productId ? { productId: params.productId } : {}),
+      ...(params?.search
+        ? {
+            OR: [
+              { product: { name: { contains: params.search, mode: "insensitive" } } },
+              { product: { sku: { contains: params.search, mode: "insensitive" } } },
+              { location: { name: { contains: params.search, mode: "insensitive" } } },
+              { location: { code: { contains: params.search, mode: "insensitive" } } },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, stocks] = await Promise.all([
+      prisma.stock.count({ where }),
+      prisma.stock.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [{ location: { warehouseId: "asc" } }, { quantity: "desc" }],
+        include: {
+          product: {
+            include: { category: true },
+          },
+          location: {
+            include: { warehouse: true },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      data: stocks,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
   }
 
   async listStockByProduct(productId: string) {
@@ -24,6 +90,7 @@ export class StockRepository {
           include: { warehouse: true },
         },
       },
+      orderBy: { quantity: "desc" },
     });
   }
 
@@ -34,7 +101,28 @@ export class StockRepository {
         product: {
           include: { category: true },
         },
+        location: {
+          include: { warehouse: true },
+        },
       },
+      orderBy: { quantity: "desc" },
+    });
+  }
+
+  async listStockByWarehouse(warehouseId: string) {
+    return prisma.stock.findMany({
+      where: {
+        location: { warehouseId },
+      },
+      include: {
+        product: {
+          include: { category: true },
+        },
+        location: {
+          include: { warehouse: true },
+        },
+      },
+      orderBy: { quantity: "desc" },
     });
   }
 
@@ -57,7 +145,12 @@ export class StockRepository {
     });
   }
 
-  async createOrUpdateStock(productId: string, locationId: string, quantity: number) {
+  async createOrUpdateStock(
+    productId: string,
+    locationId: string,
+    quantity: number,
+    reservedQuantity: number = 0
+  ) {
     return prisma.stock.upsert({
       where: {
         productId_locationId: {
@@ -67,11 +160,17 @@ export class StockRepository {
       },
       update: {
         quantity,
+        reservedQuantity,
       },
       create: {
         productId,
         locationId,
         quantity,
+        reservedQuantity,
+      },
+      include: {
+        product: true,
+        location: true,
       },
     });
   }

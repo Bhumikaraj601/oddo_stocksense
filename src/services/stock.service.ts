@@ -1,5 +1,5 @@
 import { stockRepository } from "@/repositories/stock.repository";
-import { ReorderRuleInput } from "@/lib/validations/reorder";
+import { StockQuery, stockQuerySchema } from "@/lib/validations/warehouse";
 
 export class StockService {
   async getStock(productId: string, locationId: string) {
@@ -14,8 +14,17 @@ export class StockService {
     return stockRepository.listStockByLocation(locationId);
   }
 
+  async getStockByWarehouse(warehouseId: string) {
+    return stockRepository.listStockByWarehouse(warehouseId);
+  }
+
   async getTotalStock(productId: string) {
     return stockRepository.getTotalStockForProduct(productId);
+  }
+
+  async listStock(query?: StockQuery) {
+    const validated = query ? stockQuerySchema.parse(query) : undefined;
+    return stockRepository.listStock(validated);
   }
 
   async listReorderRules(productId?: string) {

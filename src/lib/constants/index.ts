@@ -6,16 +6,19 @@ export const APP_CONFIG = {
 };
 
 export const UNITS_OF_MEASURE = [
+  "PCS",
+  "KG",
+  "G",
+  "L",
+  "ML",
+  "M",
+  "BOX",
+  "PACK",
   "Units",
-  "kg",
-  "g",
-  "meters",
-  "liters",
-  "boxes",
-  "pallets",
-  "pairs",
-  "rolls",
+  "Pallets",
 ] as const;
+
+export type UnitOfMeasure = (typeof UNITS_OF_MEASURE)[number];
 
 export const OPERATION_STATUSES = [
   "DRAFT",
@@ -92,9 +95,14 @@ export const NAVIGATION_ITEMS = [
   },
   {
     title: "Settings",
-    href: "/settings/warehouses",
+    href: "/settings",
     icon: "Settings",
     children: [
+      {
+        title: "Categories",
+        href: "/settings/categories",
+        description: "Manage product categories and hierarchies",
+      },
       {
         title: "Warehouses & Locations",
         href: "/settings/warehouses",

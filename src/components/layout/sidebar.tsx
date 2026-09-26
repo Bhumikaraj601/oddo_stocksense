@@ -17,7 +17,10 @@ import {
   History,
   Building2,
   ChevronDown,
+  User,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth/auth-context";
 
 interface NavItemChild {
   title: string;
@@ -87,10 +90,16 @@ const navItems: NavItem[] = [
       },
     ],
   },
+  {
+    title: "My Profile",
+    href: "/profile",
+    icon: User,
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({
     Operations: true,
     Settings: true,
@@ -202,16 +211,29 @@ export function Sidebar() {
         })}
       </div>
 
-      {/* Footer / Status Indicator */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-        <div className="flex items-center gap-3">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
-              Odoo Hackathon
-            </p>
-            <p className="text-[11px] text-slate-500 truncate">Phase 1 Foundation</p>
-          </div>
+      {/* Footer / User Widget */}
+      <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <Link href="/profile" className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-80">
+            <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold text-[11px] border border-indigo-200 dark:border-indigo-800 shrink-0">
+              {user?.name ? user.name[0].toUpperCase() : "U"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
+                {user?.name || "User"}
+              </p>
+              <p className="text-[10px] text-slate-400 truncate">
+                {user?.role === "INVENTORY_MANAGER" ? "Manager" : "Staff"}
+              </p>
+            </div>
+          </Link>
+          <button
+            onClick={logout}
+            title="Sign Out"
+            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-md transition-colors shrink-0"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </aside>

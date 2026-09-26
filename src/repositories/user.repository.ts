@@ -48,6 +48,38 @@ export class UserRepository {
     });
   }
 
+  async updatePassword(id: string, passwordHash: string) {
+    return prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async updateProfile(id: string, data: { name: string }) {
+    return prisma.user.update({
+      where: { id },
+      data: { name: data.name },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async countUsers(): Promise<number> {
+    return prisma.user.count();
+  }
+
   async listUsers() {
     return prisma.user.findMany({
       where: { isActive: true },

@@ -1,6 +1,8 @@
 import { productRepository } from "@/repositories/product.repository";
-import { ProductInput, UpdateProductInput, CategoryInput } from "@/lib/validations/product";
-import { NotFoundError, ConflictError } from "@/lib/utils/api-error";
+import { categoryRepository } from "@/repositories/category.repository";
+import { locationRepository } from "@/repositories/location.repository";
+import { ProductInput, UpdateProductInput, ProductQueryParams } from "@/lib/validations/product";
+import { NotFoundError, ConflictError, ValidationError } from "@/lib/utils/api-error";
 
 export class ProductService {
   async getProductById(id: string) {
@@ -11,20 +13,39 @@ export class ProductService {
     return product;
   }
 
-  async listProducts(params?: {
-    search?: string;
-    categoryId?: string;
-    isActive?: boolean;
-    page?: number;
-    limit?: number;
-  }) {
-    return productRepository.list(params);
+  async listProducts(params?: ProductQueryParams) {
+    return productRepository.list({
+      search: params?.search,
+      categoryId: params?.categoryId,
+      status: params?.status,
+      page: params?.page,
+      limit: params?.limit,
+    });
   }
 
   async createProduct(input: ProductInput) {
-    const existing = await productRepository.findBySku(input.sku);
-    if (existing) {
-      throw new ConflictError(`Product with SKU "${input.sku}" already exists`);
+    // 1. Verify SKU uniqueness (case-insensitive)
+    const existingSku = await productRepository.findBySku(input.sku);
+    if (existingSku) {
+      throw new ConflictError(`Product with SKU "${input.sku.toUpperCase()}" already exists.`);
+    }
+
+    // 2. Verify Category exists
+    const category = await categoryRepository.findById(input.categoryId);
+    if (!category) {
+      throw new ValidationError("Selected category does not exist in the database.");
+    }
+
+    // 3. Verify Location exists if initial stock is provided
+    if (input.initialStock && input.initialStock.quantity > 0) {
+      const location = await locationRepository.findById(
+        input.initialStock.locationId
+      );
+      if (!location) {
+        throw new ValidationError(
+          "Selected initial stock location does not exist. Please select a valid warehouse location."
+        );
+      }
     }
 
     return productRepository.create({
@@ -39,16 +60,60 @@ export class ProductService {
   }
 
   async updateProduct(id: string, input: UpdateProductInput) {
-    await this.getProductById(id);
+    const product = await this.getProductById(id);
+
+    // If SKU is being updated, verify uniqueness
+    if (input.sku && input.sku.toUpperCase() !== product.sku.toUpperCase()) {
+      const existingSku = await productRepository.findBySku(input.sku, id);
+      if (existingSku) {
+        throw new ConflictError(
+          `Product with SKU "${input.sku.toUpperCase()}" already exists.`
+        );
+      }
+    }
+
+    // If category is being updated, verify category exists
+    if (input.categoryId && input.categoryId !== product.categoryId) {
+      const category = await categoryRepository.findById(input.categoryId);
+      if (!category) {
+        throw new ValidationError("Selected category does not exist.");
+      }
+    }
+
     return productRepository.update(id, input);
   }
 
-  async listCategories() {
-    return productRepository.listCategories();
+  async deactivateProduct(id: string) {
+    await this.getProductById(id);
+    return productRepository.update(id, { isActive: false });
   }
 
-  async createCategory(input: CategoryInput) {
-    return productRepository.createCategory(input);
+  async activateProduct(id: string) {
+    await this.getProductById(id);
+    return productRepository.update(id, { isActive: true });
+  }
+
+  async deleteProduct(id: string) {
+    await this.getProductById(id);
+
+    const hasHistory = await productRepository.hasHistoricalRecords(id);
+    if (hasHistory) {
+      // Deactivate instead of hard deleting to preserve inventory history
+      await productRepository.update(id, { isActive: false });
+      return {
+        success: true,
+        deactivated: true,
+        message:
+          "Product has associated stock or operational records. It has been deactivated instead of deleted to preserve inventory audit history.",
+      };
+    }
+
+    await productRepository.delete(id);
+    return {
+      success: true,
+      deactivated: false,
+      message: "Product permanently deleted from catalog.",
+    };
   }
 }
 
