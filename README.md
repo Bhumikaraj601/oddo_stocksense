@@ -1,291 +1,372 @@
-# StockSense — Modular Inventory Management System
+# StockSense — Enterprise Inventory & Warehouse Management System
 
 > **Odoo Hackathon Project**  
-> **Status:** Phase 1 — Project Foundation & Architecture (Complete)
+> A high-performance, modular Inventory Management System built with **Next.js 16 (App Router)**, **TypeScript**, **Prisma ORM**, and **PostgreSQL**.
 
 ---
 
-## 📌 Project Overview
+## 📌 1. System Overview
 
-**StockSense** is a modern, modular, and scalable Inventory Management System designed to centralize warehouse operations, optimize stock levels, and provide complete traceability across multi-warehouse locations.
+**StockSense** is an enterprise-grade, modular inventory management system designed to streamline warehouse operations, maintain absolute inventory integrity, and provide end-to-end traceability across multi-facility storage hierarchies.
 
-The core purpose of StockSense is to maintain accurate inventory levels by automatically recording and updating stock whenever warehouse operations (receipts, deliveries, internal transfers, and physical adjustments) are executed.
+StockSense manages the entire lifecycle of physical goods:
+- **Receipts**: Receiving goods from suppliers and crediting warehouse storage locations.
+- **Internal Transfers**: Relocating stock across warehouses, racks, and bins with zero invariant loss.
+- **Deliveries**: Picking, packing, and dispatching customer orders with atomic stock reduction.
+- **Inventory Adjustments**: Reconciling physical cycle counts against theoretical system balances.
+- **Stock Ledger**: Maintaining an immutable, double-entry audit trail of every unit movement.
+- **Low Stock Intelligence**: Monitoring minimum stock thresholds and automating reorder triggers.
 
 ---
 
-## 🚀 Tech Stack
+## 🚀 2. Technology Stack
 
-| Layer | Technology | Purpose |
+| Layer | Technology | Key Capabilities |
 | :--- | :--- | :--- |
-| **Frontend Framework** | **Next.js 16 (App Router)** | React Server Components, high performance, file-based routing |
-| **Language** | **TypeScript (Strict Mode)** | End-to-end type safety across client, services, and database |
-| **Styling & UI** | **Tailwind CSS + CVA + Lucide** | Responsive, modern dark/light UI design system |
-| **Database ORM** | **Prisma ORM (v6)** | Type-safe schema definition, migrations, and query generation |
-| **Database** | **PostgreSQL** | Relational data integrity, ACID transactions, and indexes |
-| **Validation** | **Zod** | Schema validation for API payloads, forms, and business logic |
-| **Forms** | **React Hook Form** | High-performance form state management |
+| **Frontend Framework** | **Next.js 16 (App Router)** | React Server Components, Client Components, Turbopack, Dynamic Routing |
+| **Language** | **TypeScript (Strict Mode)** | 100% end-to-end type safety from UI to database |
+| **Styling & Design System** | **Tailwind CSS + Lucide Icons** | Professional dark/light UI, responsive layouts, micro-interactions |
+| **Database & ORM** | **PostgreSQL + Prisma ORM (v6)** | ACID transactions, foreign keys, compound indexes, relational integrity |
+| **Authentication & Security** | **Bcrypt.js + Jose (JWT)** | Edge-compatible JWT in secure HTTP-only cookies, password hashing |
+| **Validation & Schema** | **Zod** | Runtime request/service validation for all API inputs and forms |
+| **State & Forms** | **React Hook Form** | Performant form management with instant inline feedback |
 
 ---
 
-## 🏗️ Layered Architecture
+## 🏗️ 3. Layered Architecture
 
-StockSense enforces a strict separation of concerns:
+StockSense follows a clean **Separation of Concerns (SoC)** layered architecture:
 
-```text
+```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Next.js App Router                       │
-│        (UI Components / Pages / Route Handlers)             │
+│                 Next.js App Router (UI / API)               │
+│       • Pages & Modals (React Server & Client Components)   │
+│       • REST API Route Handlers (/api/*)                    │
+│       • Middleware Route Protection (/dashboard, etc.)      │
 └─────────────────────────────┬───────────────────────────────┘
-                              │ Validates payload with Zod
+                              │ Runtime Zod Validation
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                      Service Layer                          │
-│        (Business logic, domain invariants, workflows)       │
+│       • Business domain logic & invariant enforcement       │
+│       • Stock math calculations & status transitions        │
+│       • Authorization checks (requireRole / requireAuth)    │
 └─────────────────────────────┬───────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Repository Layer                         │
-│        (Data access queries, transactions, relations)       │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Prisma ORM Singleton                     │
+│       • Atomic Prisma Database Access                       │
+│       • Interactive Multi-Query Transactions ($transaction) │
+│       • Relational queries, pagination & complex filters    │
 └─────────────────────────────┬───────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                     PostgreSQL Database                     │
+│       • 17 Relational Tables & Enums                        │
+│       • Compound Unique Constraints & Foreign Keys          │
+│       • Immutable Stock Ledger Movements                    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📁 Directory Structure
+## 📦 4. Core System Modules & Features
 
-```text
-oddo_stocksense/
-├── prisma/
-│   └── schema.prisma         # Comprehensive PostgreSQL schema & models
-│
-├── src/
-│   ├── app/                  # Next.js App Router pages and API endpoints
-│   │   ├── (auth)/login/     # Auth-ready structural placeholder
-│   │   ├── dashboard/        # Main KPI dashboard and recent activity ledger
-│   │   ├── products/         # Product catalog and category hierarchy
-│   │   ├── operations/       # Operational workflows
-│   │   │   ├── receipts/     # Incoming stock from vendors
-│   │   │   ├── deliveries/   # Outgoing customer orders
-│   │   │   ├── transfers/    # Inter-location warehouse transfers
-│   │   │   ├── adjustments/  # Physical count discrepancies
-│   │   │   └── ledger/       # Comprehensive audit movement history
-│   │   ├── settings/
-│   │   │   └── warehouses/   # Multi-warehouse and location hierarchy
-│   │   └── api/
-│   │       ├── health/       # Health check & database ping route
-│   │       └── products/     # Layered CRUD route handler
-│   │
-│   ├── components/
-│   │   ├── layout/           # AppShell, Sidebar navigation, Header
-│   │   ├── ui/               # Reusable atomic UI elements (Card, Button, Badge, Input)
-│   │   └── shared/           # KpiCard, StatusBadge, PageHeader, PlaceholderView
-│   │
-│   ├── lib/
-│   │   ├── prisma.ts         # PrismaClient singleton (prevents dev reload exhaustion)
-│   │   ├── constants/        # System enums, UOM list, navigation schema
-│   │   ├── validations/      # Zod validation schemas (product, warehouse, operations)
-│   │   └── utils/            # Styling helper (cn), formatters, typed API error handlers
-│   │
-│   ├── repositories/         # Database access layer (Product, Warehouse, Stock, Ledger)
-│   ├── services/             # Business domain logic (Product, Stock, Operation, Dashboard)
-│   ├── types/                # Domain types, DTOs, and extended relation types
-│   └── config/               # Site settings and navigation definitions
-│
-├── .env                      # Local environment configuration
-├── .env.example              # Safe environment variable template
-├── .gitignore                # Git ignore rules protecting credentials and artifacts
-├── package.json              # Project dependencies and scripts
-├── tsconfig.json             # Strict TypeScript configuration
-└── README.md                 # Project documentation
+### 🔐 A. Authentication & Access Control
+- **Role-Based Permissions**: Supports `ADMIN`, `INVENTORY_MANAGER`, and `WAREHOUSE_STAFF`.
+- **JWT Session Management**: Edge-compatible JSON Web Tokens stored in secure, `httpOnly`, `sameSite: lax` cookies.
+- **Route Guarding**: Next.js middleware guards protected paths (`/dashboard`, `/products`, `/operations/*`, `/settings/*`, `/profile`).
+- **OTP Password Recovery**: 6-digit hashed OTP workflow with time-to-live expiration and attempt throttles.
+- **User Profile Management**: Live profile details, name updates, and password rotation.
+
+### 🏷️ B. Product & Category Management
+- **Product Master Data**: Product name, SKU, Unit of Measure (KG, PCS, L, M, BOX, UNIT), category, and minimum stock threshold.
+- **SKU Integrity**: Case-insensitive unique SKU enforcement prevents barcode collisions.
+- **Category Hierarchy**: Category taxonomy with active/inactive statuses and live product count aggregates.
+- **Stock by Location**: Real-time breakdown of physical on-hand quantity per warehouse location directly on the product detail view.
+- **Safe Deactivation**: Products can be archived without breaking historical ledger movements or past orders.
+
+### 🏭 C. Multi-Warehouse & Location Hierarchy
+- **Multi-Facility Support**: Manage multiple distinct physical warehouses (Main Warehouse, Secondary Hub, Production Plant).
+- **Hierarchical Locations**: Subdivide warehouses into functional zones and locations (`INTERNAL`, `VENDOR`, `CUSTOMER`, `INVENTORY_LOSS`, `PRODUCTION`, `TRANSIT`).
+- **Compound Scoping**: Location codes are uniquely scoped per warehouse (`warehouseId_code`).
+- **Scrap & Transit Management**: Flag dedicated scrap or staging locations for damaged or transit goods.
+
+### 📥 D. Incoming Receipts (Vendor Inbound)
+- **Document Sequencing**: Automatic sequential reference generation (`REC-000001`, `REC-000002`).
+- **Operational Lifecycle**: `DRAFT` ➔ `READY` ➔ `DONE` (or `CANCELED`).
+- **Multi-Line Item Support**: Add multiple products with destination location overrides.
+- **Atomic Validation**: Validating a receipt atomically updates the location stock balance and inserts immutable ledger records within a single database transaction.
+- **Idempotency Guard**: Receipts in `DONE` status cannot be validated again.
+
+### 🔄 E. Internal Transfers (Inter-Location Movements)
+- **Traceable Relocation**: Move inventory between racks, zones, or across different warehouses (`TRF-000001`).
+- **Total Stock Invariant**: Transfers strictly preserve total inventory across the enterprise (Source decreases, Destination increases by identical amount).
+- **Over-Transfer Prevention**: System verifies source location availability before allowing transfers; negative stock is blocked.
+
+### 📤 F. Outgoing Deliveries (Customer Outbound)
+- **Order Processing**: Customer dispatch workflow (`DEL-000001`) with picking and packing status progression.
+- **Demand vs Delivered Verification**: Validates demand quantities against real-time on-hand stock.
+- **Stock Decrement**: Dispatched quantities are atomically deducted from source location balances and written to the ledger.
+
+### ⚖️ G. Physical Inventory Adjustments (Cycle Counting)
+- **Reconciliation Workflow**: Resolves discrepancies between theoretical system stock and physical physical counts (`ADJ-000001`).
+- **Delta Computation**: Automatically calculates whether an adjustment is a positive increase or negative shrinkage.
+- **Audit Reason Tracking**: Requires structured notes/reasons (e.g., annual cycle count, damaged goods write-off).
+
+### 📜 H. Stock Ledger & Move History
+- **Single Source of Truth**: Unified movement log accessible at `/operations/move-history` and `/operations/ledger`.
+- **Complete Audit Trail**: Records Timestamp, Product SKU/Name, Operation Type (`RECEIPT`, `DELIVERY`, `INTERNAL_TRANSFER`, `INVENTORY_ADJUSTMENT`), Reference Number, Source Location, Destination Location, Quantity Delta, and Responsible User.
+- **Read-Only Invariant**: The Stock Ledger is strictly append-only and read-only; records can never be edited or deleted.
+
+### 📊 I. Real-Time KPI Dashboard
+- **Live Database Calculations**:
+  - **Total Products**: Total active SKUs in the catalog.
+  - **Total Inventory Quantity**: Real-time sum of all physical on-hand units across all locations.
+  - **Low Stock SKUs**: Count of products whose current stock is below their minimum threshold.
+  - **Out of Stock SKUs**: Count of products with 0 stock on hand.
+  - **Pending Receipts**: Inbound shipments in `DRAFT` or `READY` status.
+  - **Pending Deliveries**: Outbound customer orders awaiting dispatch.
+  - **Scheduled Transfers**: Active inter-location transfers.
+- **Recent Movements Table**: Live streaming view of the 5 most recent ledger operations.
+
+### ⚠️ J. Automated Low Stock & Reordering Rules
+- Dynamic status calculation evaluated directly against live database stock:
+  - $\text{Stock} = 0 \implies \text{OUT\_OF\_STOCK}$
+  - $0 < \text{Stock} \le \text{MinimumStock} \implies \text{LOW\_STOCK}$
+  - $\text{Stock} > \text{MinimumStock} \implies \text{IN\_STOCK}$
+- Dedicated Low Stock Alert view (`/products/low-stock`) for supply chain managers to trigger replenishments.
+
+---
+
+## 🗄️ 5. Database Schema & Data Model
+
+The PostgreSQL schema (`prisma/schema.prisma`) comprises 17 tables:
+
+```mermaid
+erDiagram
+    User ||--o{ Receipt : "creates / validates"
+    User ||--o{ Delivery : "creates / validates"
+    User ||--o{ InternalTransfer : "creates / validates"
+    User ||--o{ Adjustment : "creates / validates"
+    User ||--o{ StockLedger : "performs"
+    User ||--o{ PasswordResetOTP : "owns"
+
+    Category ||--o{ Category : "parent / children"
+    Category ||--o{ Product : "contains"
+
+    Warehouse ||--o{ Location : "houses"
+    Warehouse ||--o{ Receipt : "receives"
+    Warehouse ||--o{ Delivery : "dispatches"
+
+    Product ||--o{ Stock : "has balance in"
+    Location ||--o{ Stock : "stores"
+
+    Product ||--o{ ReceiptItem : "itemized in"
+    Receipt ||--o{ ReceiptItem : "contains"
+
+    Product ||--o{ DeliveryItem : "itemized in"
+    Delivery ||--o{ DeliveryItem : "contains"
+
+    Product ||--o{ InternalTransferItem : "itemized in"
+    InternalTransfer ||--o{ InternalTransferItem : "contains"
+
+    Product ||--o{ AdjustmentItem : "itemized in"
+    Adjustment ||--o{ AdjustmentItem : "contains"
+
+    Product ||--o{ StockLedger : "movement logged"
+    Location ||--o{ StockLedger : "source / dest"
+    Product ||--o{ ReorderRule : "governed by"
 ```
 
 ---
 
-## 🗄️ Database Design & Models
+## 🔄 6. Complete Inventory Lifecycle Walkthrough
 
-The PostgreSQL schema (`prisma/schema.prisma`) defines the core entities:
+Here is the exact lifecycle verified during end-to-end testing:
 
-1. **User & Roles**:
-   - `User` with roles: `ADMIN`, `INVENTORY_MANAGER`, `WAREHOUSE_STAFF`.
-2. **Catalog**:
-   - `Category`: Self-referencing parent-child category tree.
-   - `Product`: Name, unique `sku`, `uom` (Units, kg, liters, etc.), `isActive`, and category relation.
-3. **Warehouses & Locations**:
-   - `Warehouse`: Multiple distinct physical facilities.
-   - `Location`: Hierarchical locations (Main Warehouse, Production Floor, Rack A, Bin 1) with `LocationType` (`INTERNAL`, `VENDOR`, `CUSTOMER`, `INVENTORY_LOSS`, `PRODUCTION`, `TRANSIT`).
-4. **Stock & Reorder Rules**:
-   - `Stock`: Maps `Product` + `Location` = `Current Quantity` (with reserved quantity support).
-   - `ReorderRule`: Per-product min/max stock thresholds and reorder quantities.
-5. **Inventory Operations**:
-   - `Receipt` + `ReceiptItem`: Vendor incoming shipments.
-   - `Delivery` + `DeliveryItem`: Customer outgoing delivery orders.
-   - `InternalTransfer` + `InternalTransferItem`: Inter-location stock transfers.
-   - `Adjustment` + `AdjustmentItem`: Theoretical vs. counted physical inventory reconciliation.
-   - `OperationStatus` enum: `DRAFT`, `WAITING`, `READY`, `DONE`, `CANCELED`.
-6. **Stock Ledger (Audit Trail)**:
-   - `StockLedger`: Immutable chronological record of every movement with reference number, operation type, source/destination locations, quantity, and user accountability.
+```text
+1. INITIAL STATE
+   Product: Steel Rod (SKU: ST-001, Min Stock: 50)
+   Stock at Rack A: 0 KG | Stock at Rack B: 0 KG | Total Stock: 0 KG
+
+2. RECEIPT VALIDATION (+100 KG to Rack A)
+   • Receipt REC-000001 created and validated
+   • Stock: Rack A = 100 KG, Rack B = 0 KG
+   • Total Inventory = 100 KG
+   • Ledger: [RECEIPT] +100 KG -> Rack A
+
+3. INTERNAL TRANSFER (30 KG: Rack A -> Rack B)
+   • Transfer TRF-000001 created and validated
+   • Stock: Rack A = 70 KG, Rack B = 30 KG
+   • Total Inventory = 100 KG (Invariant Preserved)
+   • Ledger: [INTERNAL_TRANSFER] 30 KG (Rack A -> Rack B)
+
+4. DELIVERY DISPATCH (-20 KG from Rack B)
+   • Delivery DEL-000001 created and validated
+   • Stock: Rack A = 70 KG, Rack B = 10 KG
+   • Total Inventory = 80 KG
+   • Ledger: [DELIVERY] -20 KG from Rack B
+
+5. INVENTORY ADJUSTMENT 1 (Physical Count: 7 KG at Rack B)
+   • Adjustment ADJ-000001 (Theoretical: 10 -> Counted: 7)
+   • Stock: Rack A = 70 KG, Rack B = 7 KG
+   • Total Inventory = 77 KG
+   • Ledger: [INVENTORY_ADJUSTMENT] -3 KG at Rack B
+
+6. INVENTORY ADJUSTMENT 2 (Physical Count: 12 KG at Rack B)
+   • Adjustment ADJ-000002 (Theoretical: 7 -> Counted: 12)
+   • Stock: Rack A = 70 KG, Rack B = 12 KG
+   • Total Inventory = 82 KG
+   • Ledger: [INVENTORY_ADJUSTMENT] +5 KG at Rack B
+
+7. LOW STOCK THRESHOLD CHECK
+   • If Min Stock = 100 KG (Stock 82 < 100) -> Status: LOW STOCK (Alert Triggered)
+   • If Min Stock = 50 KG  (Stock 82 >= 50) -> Status: IN STOCK
+```
 
 ---
 
-## ⚙️ Environment Setup
+## 🛠️ 7. Setup & Installation Guide
 
-### 1. Clone & Install Dependencies
+### Prerequisites
+- **Node.js**: v18.18.0 or higher (v20+ recommended)
+- **npm** or **yarn** / **pnpm**
+- **PostgreSQL**: v14 or higher (or cloud provider e.g. Neon, Supabase, AWS RDS)
 
+### Step 1: Clone Repository
 ```bash
-git clone <repo-url>
+git clone <repository-url>
 cd oddo_stocksense
 npm install
 ```
 
-### 2. Configure Environment Variables
-
+### Step 2: Configure Environment Variables
 Copy `.env.example` to `.env`:
-
 ```bash
 cp .env.example .env
 ```
 
-Update your `.env` file with your PostgreSQL connection strings:
-
+Configure your `.env` parameters:
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/stocksense_db?schema=public"
-DIRECT_URL="postgresql://user:password@localhost:5432/stocksense_db?schema=public"
+# PostgreSQL Database Connection Strings
+DATABASE_URL="postgresql://username:password@localhost:5432/stocksense?schema=public"
+DIRECT_URL="postgresql://username:password@localhost:5432/stocksense?schema=public"
 
+# Application Config
 NEXT_PUBLIC_APP_NAME="StockSense"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 NODE_ENV="development"
 
-AUTH_SECRET="super-secret-jwt-key-min-32-chars-change-in-prod"
+# JWT Secret for Session Cookies (32+ random characters)
+AUTH_SECRET="your-32-character-long-secret-key-for-jwt-session"
 ```
 
----
-
-## 💾 Database Setup
-
-### Validate Prisma Schema
-
+### Step 3: Database Migration & Seeding
 ```bash
-npx prisma validate
-```
-
-### Generate Prisma Client
-
-```bash
+# Generate Prisma Client
 npx prisma generate
-```
 
-### Apply Migrations (when PostgreSQL is running)
-
-```bash
+# Apply Migrations to PostgreSQL
 npx prisma migrate dev --name init
+
+# Seed Default Categories, Warehouses, Locations & Admin User
+npx prisma db seed
 ```
 
-*Note: If a PostgreSQL database is not connected during local inspection, Prisma Client types are already compiled and all models are fully accessible in offline mode.*
-
----
-
-## 🖥️ Running Development Server
-
+### Step 4: Run Development Server
 ```bash
 npm run dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) to access the StockSense application shell and dashboard.
-
-To run TypeScript verification:
-
-```bash
-npx tsc --noEmit
-```
-
-To run a production build:
-
-```bash
-npm run build
-```
-<<<<<<< HEAD
-=======
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 🎯 Phase Status
+## 🧪 8. Verification & Testing
 
-- [x] **Phase 1: Project Foundation & Architecture** *(Completed)*
-  - [x] Next.js App Router project initialized with TypeScript & Tailwind CSS
-  - [x] PostgreSQL & Prisma ORM configured with all core entities & relations
-  - [x] Clean layered architecture (Routes -> Services -> Repositories -> Database)
-  - [x] Comprehensive Zod validation schemas
-  - [x] Singleton Prisma Client with connection pooling safety
-  - [x] Application Shell with responsive Sidebar, Header, and status indicators
-  - [x] Dashboard with 6 required KPI cards and recent ledger movement table
-  - [x] Clean placeholder routes for all navigation modules
-  - [x] Health check API endpoint (`/api/health`) and Products API route handler
-  - [x] Production build and TypeScript validation passing 100%
+### Automated Full-System Test Suite
+StockSense includes an end-to-end real PostgreSQL verification script testing all 10 major lifecycle stages:
+```bash
+npx tsx scripts/test-whole-system.ts
+```
+*Executes and asserts all 44 automated database transactions, invariants, double-validation guards, and calculation rules.*
 
-- [x] **Phase 2: Authentication & User Management** *(Completed)*
-  - [x] Secure password hashing using `bcryptjs` (salt 12)
-  - [x] Edge-compatible JWT session management via `jose` with secure HTTP-only cookies
-  - [x] Next.js Proxy/Middleware protecting all routes (`/dashboard`, `/products`, `/operations`, `/settings`, `/profile`)
-  - [x] Interactive User Signup (`/signup`) with role selection (`INVENTORY_MANAGER` / `WAREHOUSE_STAFF`)
-  - [x] Interactive User Login (`/login`) with session creation and dashboard redirection
-  - [x] OTP-based Password Reset flow:
-    - [x] `PasswordResetOTP` Prisma model (hashed OTP, 10-min expiration, attempt limits)
-    - [x] Step 1: `/forgot-password` (Email input & OTP generation)
-    - [x] Step 2: `/reset-password` (OTP verification & new password update)
-    - [x] Development mode test OTP console logging & UI helper
-  - [x] My Profile (`/profile`) with account info, name updates, and password change
-  - [x] Header profile dropdown with "My Profile" and "Sign Out" actions
-  - [x] Server-side guards: `requireAuth()` & `requireRole(["INVENTORY_MANAGER", ...])`
-  - [x] Comprehensive automated unit & crypto test suite passing 100%
+### Code Quality & Linting
+```bash
+npm run lint
+```
 
-- [x] **Phase 3: Product & Category Management** *(Completed)*
-  - [x] Product master CRUD with dynamic category relation and controlled Units of Measure
-  - [x] SKU unique validation (case-insensitive) and duplicate prevention
-  - [x] Category directory with case-insensitive unique naming and live product counts
-  - [x] Product search by Name and SKU with database-backed query filters
-  - [x] Category and Status filters (Active / Inactive) with server-side pagination
-  - [x] Product detail page with live "Stock by Location" breakdown table
-  - [x] Optional Initial Stock allocation to valid physical locations with stock ledger audit trail
-  - [x] Safe product deactivation (`isActive: false`) preserving historical inventory integrity
-  - [x] Server-side authorization guards on all API routes and mutations
-  - [x] Automated test suite verifying validation rules, SKU uniqueness, and error handling
+### Production Build Verification
+```bash
+npm run build
+```
+*Compiles all 47 routes and validates 100% strict TypeScript typing.*
 
-- [x] **Phase 4: Warehouse & Location Management** *(Completed)*
-  - [x] Multi-warehouse management (`/settings/warehouses`) with unique warehouse codes and search
-  - [x] Location hierarchy and management (`/settings/warehouses/[id]`) with controlled LocationType
-  - [x] Scoped location codes within warehouses (`warehouseId, code` compound unique)
-  - [x] Product-Location stock availability mapping (`Stock` unique constraint on `productId, locationId`)
-  - [x] Live "Stock by Location" breakdown and aggregate calculation across warehouses
-  - [x] Reusable `WarehouseLocationFilter` component for dynamic warehouse/location scoping
-  - [x] Safe warehouse and location deactivation protecting historical stock and movements
-  - [x] Server-side authorization (`INVENTORY_MANAGER` / `ADMIN`) on all creation & modification endpoints
-  - [x] Automated test suite verifying warehouse validation, location types, and stock queries
+---
 
-- [x] **Phase 5: Receipts / Incoming Stock** *(Completed)*
-  - [x] Supplier entity & lightweight vendor directory with unique vendor codes
-  - [x] Unique, concurrent-safe receipt sequencing (`REC-000001`, `REC-000002`...)
-  - [x] Receipt status lifecycle: `DRAFT` ➔ `READY` ➔ `DONE` or `CANCELED`
-  - [x] Draft receipts enforce zero stock mutation and zero ledger entries
-  - [x] Multi-line item creation with real-time product selector and warehouse-scoped locations
-  - [x] Atomic transactional receipt validation (`$transaction`) crediting stock directly to `(productId, locationId)`
-  - [x] Immutable Stock Ledger entry logging on receipt completion
-  - [x] Strict validation idempotency and race condition prevention
-  - [x] Responsive Receipt List, Creation, and Detail views with confirmation modal
-  - [x] Server-side authorization (`INVENTORY_MANAGER` / `ADMIN`) on all validation & cancellation endpoints
+## 🌐 9. API Reference
 
-- [ ] **Phase 6: Delivery Orders / Outgoing Stock** *(Upcoming)*
-  - [ ] Customer entity & shipping address directory
-  - [ ] Outgoing Delivery Order lifecycle (`DRAFT` → `WAITING` → `READY` → `DONE`)
-  - [ ] Stock reservation & availability verification
-  - [ ] Atomic stock deduction on delivery validation with Stock Ledger audit logging
+| Route | Method | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `/api/auth/signup` | `POST` | Register a new user account | Public |
+| `/api/auth/login` | `POST` | Authenticate user & issue session cookie | Public |
+| `/api/auth/logout` | `POST` | Clear session cookie | Authenticated |
+| `/api/auth/me` | `GET` | Get current authenticated user | Authenticated |
+| `/api/dashboard` | `GET` | Aggregate KPI counts and recent movements | Authenticated |
+| `/api/products` | `GET, POST` | List products / Create new product | Authenticated |
+| `/api/products/[id]` | `GET, PUT, DELETE` | Get details / Update / Archive product | Authenticated |
+| `/api/products/low-stock` | `GET` | List products below minimum stock | Authenticated |
+| `/api/categories` | `GET, POST` | List / Create product categories | Authenticated |
+| `/api/warehouses` | `GET, POST` | List / Create warehouses | Authenticated |
+| `/api/warehouses/[id]/locations` | `GET, POST` | List / Create storage locations | Authenticated |
+| `/api/receipts` | `GET, POST` | List receipts / Create inbound receipt | Authenticated |
+| `/api/receipts/[id]/validate` | `POST` | Atomically validate receipt & credit stock | Manager / Admin |
+| `/api/transfers` | `GET, POST` | List / Create internal transfer | Authenticated |
+| `/api/transfers/[id]/validate` | `POST` | Validate transfer & update locations | Manager / Admin |
+| `/api/deliveries` | `GET, POST` | List / Create outbound delivery | Authenticated |
+| `/api/deliveries/[id]/validate` | `POST` | Validate delivery & debit stock | Manager / Admin |
+| `/api/adjustments` | `GET, POST` | List / Create cycle count adjustment | Authenticated |
+| `/api/adjustments/[id]/validate` | `POST` | Validate adjustment & reconcile delta | Manager / Admin |
+| `/api/move-history` | `GET` | Paginated immutable stock ledger movements | Authenticated |
+| `/api/health` | `GET` | System health check & database ping | Public |
+
+---
+
+## 🔒 10. Security & Data Integrity Highlights
+
+1. **ACID Transaction Isolation**:
+   - Every stock-changing operation uses `prisma.$transaction` with generous timeout guards (`timeout: 30000`) to guarantee that the operation document, location stock balance, and stock ledger entries either **all succeed together or roll back completely**.
+2. **Zero Invariant Drift**:
+   - Total inventory quantity across all locations strictly equals:
+     $$\text{Total Stock} = \sum \text{Receipts} - \sum \text{Deliveries} \pm \sum \text{Adjustments}$$
+   - Internal transfers never modify enterprise-wide inventory sums.
+3. **Bcrypt + JWT Authentication**:
+   - Passwords salted with 12 rounds.
+   - Session tokens signed with HMAC-SHA256 and sent via `SameSite=Lax`, `HttpOnly` cookies.
+4. **Client-Side Tampering Prevention**:
+   - All stock quantities and location balances are validated on the server. Clients cannot arbitrarily manipulate quantities.
+5. **No Secrets in Source Control**:
+   - Database credentials and secrets are kept in `.env` files protected by `.gitignore`.
+
+---
+
+## 👥 11. Default Roles & Access Matrix
+
+| Feature / Action | Admin | Inventory Manager | Warehouse Staff |
+| :--- | :---: | :---: | :---: |
+| View Dashboard & Inventory | ✅ | ✅ | ✅ |
+| Search & View Products | ✅ | ✅ | ✅ |
+| Create Draft Receipts / Transfers / Deliveries | ✅ | ✅ | ✅ |
+| Validate Receipts & Deliveries | ✅ | ✅ | ❌ |
+| Validate Physical Adjustments | ✅ | ✅ | ❌ |
+| Create Warehouses & Locations | ✅ | ✅ | ❌ |
+| Manage Categories | ✅ | ✅ | ❌ |
+| User Profile & Password Change | ✅ | ✅ | ✅ |
+
+---
+
+## 📄 12. License & Credits
+
+Developed for the **Odoo Hackathon**. Built with modern web standards and enterprise inventory architecture.
