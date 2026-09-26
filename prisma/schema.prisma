@@ -62,6 +62,7 @@ model User {
   deliveriesCreated  Delivery[]         @relation("UserDeliveries")
   deliveriesValidated Delivery[]        @relation("UserValidatedDeliveries")
   transfersCreated   InternalTransfer[] @relation("UserTransfers")
+  transfersValidated InternalTransfer[] @relation("UserValidatedTransfers")
   adjustmentsCreated Adjustment[]       @relation("UserAdjustments")
   movementsRecorded  StockLedger[]      @relation("UserMovements")
   passwordResetOtps  PasswordResetOTP[] @relation("UserPasswordResetOtps")
@@ -151,10 +152,12 @@ model Warehouse {
   updatedAt   DateTime @updatedAt
 
   // Relationships
-  locations    Location[]
-  receipts     Receipt[]
-  deliveries   Delivery[]
-  reorderRules ReorderRule[]
+  locations       Location[]
+  receipts        Receipt[]
+  deliveries      Delivery[]
+  sourceTransfers InternalTransfer[] @relation("TransferSourceWarehouse")
+  destTransfers   InternalTransfer[] @relation("TransferDestWarehouse")
+  reorderRules    ReorderRule[]
 
   @@index([name])
   @@index([code])
@@ -386,24 +389,36 @@ model DeliveryItem {
 
 model InternalTransfer {
   id                    String          @id @default(uuid())
-  referenceNumber       String          @unique
-  status                OperationStatus @default(DRAFT)
-  scheduledDate         DateTime?
+  referenceNumber       String          @unique // e.g. TRF-000001
+  sourceWarehouseId     String?
+  sourceWarehouse       Warehouse?      @relation("TransferSourceWarehouse", fields: [sourceWarehouseId], references: [id], onDelete: SetNull)
   sourceLocationId      String
   sourceLocation        Location        @relation("TransferSourceLocation", fields: [sourceLocationId], references: [id], onDelete: Restrict)
+  destinationWarehouseId String?
+  destinationWarehouse  Warehouse?      @relation("TransferDestWarehouse", fields: [destinationWarehouseId], references: [id], onDelete: SetNull)
   destinationLocationId String
   destinationLocation   Location        @relation("TransferDestinationLocation", fields: [destinationLocationId], references: [id], onDelete: Restrict)
+  status                OperationStatus @default(DRAFT)
+  scheduledDate         DateTime?
   createdById           String
   createdBy             User            @relation("UserTransfers", fields: [createdById], references: [id], onDelete: Restrict)
+  validatedById         String?
+  validatedBy           User?           @relation("UserValidatedTransfers", fields: [validatedById], references: [id], onDelete: SetNull)
+  validatedAt           DateTime?
   notes                 String?
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 
   items InternalTransferItem[]
 
+  @@index([referenceNumber])
   @@index([status])
+  @@index([sourceWarehouseId])
   @@index([sourceLocationId])
+  @@index([destinationWarehouseId])
   @@index([destinationLocationId])
+  @@index([createdById])
+  @@index([createdAt])
   @@map("internal_transfers")
 }
 
@@ -414,7 +429,7 @@ model InternalTransferItem {
   productId  String
   product    Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
   quantity   Float
-  uom        String           @default("Units")
+  uom        String           @default("PCS")
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
 

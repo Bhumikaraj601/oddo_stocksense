@@ -80,10 +80,13 @@ export type DeliveryWithDetails = Delivery & {
 };
 
 export type InternalTransferWithDetails = InternalTransfer & {
-  sourceLocation: Location;
-  destinationLocation: Location;
+  sourceWarehouse?: Warehouse | null;
+  sourceLocation: Location & { warehouse?: Warehouse | null };
+  destinationWarehouse?: Warehouse | null;
+  destinationLocation: Location & { warehouse?: Warehouse | null };
   createdBy: Pick<User, "id" | "name" | "email">;
-  items: (InternalTransferItem & { product: Product })[];
+  validatedBy?: Pick<User, "id" | "name" | "email"> | null;
+  items: (InternalTransferItem & { product: Product & { category?: Category | null } })[];
 };
 
 export type AdjustmentWithDetails = Adjustment & {
