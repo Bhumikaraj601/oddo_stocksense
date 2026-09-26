@@ -59,11 +59,15 @@ StockSense Team`;
 </html>
 `;
 
+  const apiKey = process.env.RESEND_API_KEY;
+  const sender = process.env.EMAIL_FROM || "StockSense <onboarding@resend.dev>";
+
   // If Resend API key is configured, send via Resend
-  if (resend) {
+  if (apiKey) {
     try {
-      const response = await resend.emails.send({
-        from: emailFrom,
+      const client = new Resend(apiKey);
+      const response = await client.emails.send({
+        from: sender,
         to,
         subject,
         text: textBody,
@@ -72,6 +76,24 @@ StockSense Team`;
 
       if (response.error) {
         console.error("[Resend Error] Failed to send OTP email:", response.error);
+
+        // Handle Resend free-tier sandbox recipient restriction gracefully in development
+        if (
+          response.error.message?.includes("only send testing emails to your own email address") ||
+          (response.error as any).statusCode === 403
+        ) {
+          console.warn("======================================================================");
+          console.warn("⚠️ [Resend Sandbox Restriction]");
+          console.warn("Resend test mode (onboarding@resend.dev) only delivers emails to your verified account email (hkinvincible021@gmail.com).");
+          console.warn(`To send to external recipients like (${to}), verify a custom domain at https://resend.com/domains.`);
+          console.warn(`[OTP CODE FOR DEV/EVALUATION]: ${otp}`);
+          console.warn("======================================================================");
+
+          if (process.env.NODE_ENV !== "production") {
+            return { success: true, id: "resend-sandbox-fallback" };
+          }
+        }
+
         throw new Error(`Resend provider error: ${response.error.message || "Failed to send email"}`);
       }
 
@@ -79,6 +101,13 @@ StockSense Team`;
       return { success: true, id: response.data?.id };
     } catch (err: any) {
       console.error("[StockSense Email Service] Resend error:", err);
+      // If sandbox fallback was triggered above or in dev, allow graceful recovery
+      if (
+        process.env.NODE_ENV !== "production" &&
+        err.message?.includes("only send testing emails to your own email address")
+      ) {
+        return { success: true, id: "resend-sandbox-fallback" };
+      }
       throw err;
     }
   } else {
