@@ -8,6 +8,8 @@ import {
   ResetPasswordInput,
   UpdateProfileInput,
   ChangePasswordInput,
+  signupSchema,
+  loginSchema,
 } from "@/lib/validations/auth";
 import {
   hashPassword,
@@ -29,6 +31,7 @@ export class AuthService {
    * Registers a new user account and creates a session token.
    */
   async signup(input: SignupInput) {
+    signupSchema.parse(input);
     const existingUser = await userRepository.findByEmail(input.email);
     if (existingUser) {
       throw new ConflictError("An account with this email address already exists.");
@@ -68,6 +71,7 @@ export class AuthService {
    * Authenticates user credentials and generates a session token.
    */
   async login(input: LoginInput) {
+    loginSchema.parse(input);
     const user = await userRepository.findByEmail(input.email);
     if (!user || !user.isActive) {
       throw new UnauthorizedError("Invalid email or password.");
