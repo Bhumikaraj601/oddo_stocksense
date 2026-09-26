@@ -1,6 +1,6 @@
 import { productRepository } from "@/repositories/product.repository";
 import { categoryRepository } from "@/repositories/category.repository";
-import { warehouseRepository } from "@/repositories/warehouse.repository";
+import { locationRepository } from "@/repositories/location.repository";
 import { ProductInput, UpdateProductInput, ProductQueryParams } from "@/lib/validations/product";
 import { NotFoundError, ConflictError, ValidationError } from "@/lib/utils/api-error";
 
@@ -38,7 +38,7 @@ export class ProductService {
 
     // 3. Verify Location exists if initial stock is provided
     if (input.initialStock && input.initialStock.quantity > 0) {
-      const location = await warehouseRepository.findLocationById(
+      const location = await locationRepository.findById(
         input.initialStock.locationId
       );
       if (!location) {
