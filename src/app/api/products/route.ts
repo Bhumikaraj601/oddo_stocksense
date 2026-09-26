@@ -1,23 +1,23 @@
 import { NextRequest } from "next/server";
 import { productService } from "@/services/product.service";
-import { productSchema } from "@/lib/validations/product";
+import { productSchema, productQuerySchema } from "@/lib/validations/product";
 import { createSuccessResponse } from "@/lib/utils/api-response";
 import { handleApiError } from "@/lib/utils/api-error";
+import { requireAuth } from "@/lib/auth/session";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search") ?? undefined;
-    const categoryId = searchParams.get("categoryId") ?? undefined;
-    const page = searchParams.get("page") ? parseInt(searchParams.get("page")!, 10) : 1;
-    const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!, 10) : 20;
 
-    const result = await productService.listProducts({
-      search,
-      categoryId,
-      page,
-      limit,
+    const validatedQuery = productQuerySchema.parse({
+      search: searchParams.get("search") ?? undefined,
+      categoryId: searchParams.get("categoryId") ?? undefined,
+      status: searchParams.get("status") ?? "ALL",
+      page: searchParams.get("page") ?? 1,
+      limit: searchParams.get("limit") ?? 20,
     });
+
+    const result = await productService.listProducts(validatedQuery);
 
     return createSuccessResponse(result.items, {
       total: result.total,
@@ -32,6 +32,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAuth();
+
     const body = await request.json();
     const validatedData = productSchema.parse(body);
 
