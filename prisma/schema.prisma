@@ -1,0 +1,399 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum UserRole {
+  ADMIN
+  INVENTORY_MANAGER
+  WAREHOUSE_STAFF
+}
+
+enum OperationStatus {
+  DRAFT
+  WAITING
+  READY
+  DONE
+  CANCELED
+}
+
+enum OperationType {
+  RECEIPT
+  DELIVERY
+  INTERNAL_TRANSFER
+  ADJUSTMENT
+}
+
+enum LocationType {
+  INTERNAL
+  VENDOR
+  CUSTOMER
+  INVENTORY_LOSS
+  PRODUCTION
+  TRANSIT
+}
+
+// ==========================================
+// AUTH & USERS
+// ==========================================
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(WAREHOUSE_STAFF)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relationships
+  receiptsCreated    Receipt[]          @relation("UserReceipts")
+  deliveriesCreated  Delivery[]         @relation("UserDeliveries")
+  transfersCreated   InternalTransfer[] @relation("UserTransfers")
+  adjustmentsCreated Adjustment[]       @relation("UserAdjustments")
+  movementsRecorded  StockLedger[]      @relation("UserMovements")
+
+  @@map("users")
+}
+
+// ==========================================
+// PRODUCT CATALOG & CATEGORIES
+// ==========================================
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  description String?
+  parentId    String?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryHierarchy")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  sku         String   @unique
+  description String?
+  uom         String   @default("Units") // Unit of measure (e.g., Units, kg, m, L, Box)
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  stocks          Stock[]
+  reorderRules    ReorderRule[]
+  receiptItems    ReceiptItem[]
+  deliveryItems   DeliveryItem[]
+  transferItems   InternalTransferItem[]
+  adjustmentItems AdjustmentItem[]
+  ledgerEntries   StockLedger[]
+
+  @@index([categoryId])
+  @@index([sku])
+  @@map("products")
+}
+
+// ==========================================
+// WAREHOUSES & LOCATIONS
+// ==========================================
+
+model Warehouse {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  locations    Location[]
+  reorderRules ReorderRule[]
+
+  @@map("warehouses")
+}
+
+model Location {
+  id           String       @id @default(uuid())
+  name         String
+  code         String       @unique
+  type         LocationType @default(INTERNAL)
+  isScrap      Boolean      @default(false)
+  warehouseId  String?
+  warehouse    Warehouse?   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  parentId     String?
+  parent       Location?    @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Location[]   @relation("LocationHierarchy")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relationships
+  stocks               Stock[]
+  reorderRules         ReorderRule[]
+  receiptDestinations  Receipt[]          @relation("ReceiptDestinationLocation")
+  deliverySources      Delivery[]         @relation("DeliverySourceLocation")
+  transferSources      InternalTransfer[] @relation("TransferSourceLocation")
+  transferDestinations InternalTransfer[] @relation("TransferDestinationLocation")
+  adjustments          Adjustment[]       @relation("AdjustmentLocation")
+  sourceMovements      StockLedger[]      @relation("SourceLocationMovements")
+  destMovements        StockLedger[]      @relation("DestLocationMovements")
+
+  @@index([warehouseId])
+  @@map("locations")
+}
+
+// ==========================================
+// STOCK & INVENTORY QUANTITIES
+// ==========================================
+
+model Stock {
+  id               String   @id @default(uuid())
+  productId        String
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  locationId       String
+  location         Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  quantity         Float    @default(0)
+  reservedQuantity Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([productId, locationId])
+  @@index([productId])
+  @@index([locationId])
+  @@map("stocks")
+}
+
+model ReorderRule {
+  id          String     @id @default(uuid())
+  productId   String
+  product     Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouseId String
+  warehouse   Warehouse  @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  locationId  String?
+  location    Location?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  minStock    Float
+  maxStock    Float
+  reorderQty  Float
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([productId, warehouseId])
+  @@index([productId])
+  @@index([warehouseId])
+  @@map("reorder_rules")
+}
+
+// ==========================================
+// INCOMING STOCK / RECEIPTS
+// ==========================================
+
+model Receipt {
+  id                    String          @id @default(uuid())
+  referenceNumber       String          @unique
+  supplierName          String
+  status                OperationStatus @default(DRAFT)
+  scheduledDate         DateTime?
+  destinationLocationId String
+  destinationLocation   Location        @relation("ReceiptDestinationLocation", fields: [destinationLocationId], references: [id], onDelete: Restrict)
+  createdById           String
+  createdBy             User            @relation("UserReceipts", fields: [createdById], references: [id], onDelete: Restrict)
+  notes                 String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  items ReceiptItem[]
+
+  @@index([status])
+  @@index([destinationLocationId])
+  @@map("receipts")
+}
+
+model ReceiptItem {
+  id               String   @id @default(uuid())
+  receiptId        String
+  receipt          Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantityExpected Float
+  quantityReceived Float    @default(0)
+  uom              String   @default("Units")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([receiptId])
+  @@index([productId])
+  @@map("receipt_items")
+}
+
+// ==========================================
+// OUTGOING STOCK / DELIVERY ORDERS
+// ==========================================
+
+model Delivery {
+  id               String          @id @default(uuid())
+  referenceNumber  String          @unique
+  customerName     String
+  status           OperationStatus @default(DRAFT)
+  scheduledDate    DateTime?
+  sourceLocationId String
+  sourceLocation   Location        @relation("DeliverySourceLocation", fields: [sourceLocationId], references: [id], onDelete: Restrict)
+  createdById      String
+  createdBy        User            @relation("UserDeliveries", fields: [createdById], references: [id], onDelete: Restrict)
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  items DeliveryItem[]
+
+  @@index([status])
+  @@index([sourceLocationId])
+  @@map("deliveries")
+}
+
+model DeliveryItem {
+  id                String   @id @default(uuid())
+  deliveryId        String
+  delivery          Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantityDemand    Float
+  quantityDelivered Float    @default(0)
+  uom               String   @default("Units")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([deliveryId])
+  @@index([productId])
+  @@map("delivery_items")
+}
+
+// ==========================================
+// INTERNAL TRANSFERS
+// ==========================================
+
+model InternalTransfer {
+  id                    String          @id @default(uuid())
+  referenceNumber       String          @unique
+  status                OperationStatus @default(DRAFT)
+  scheduledDate         DateTime?
+  sourceLocationId      String
+  sourceLocation        Location        @relation("TransferSourceLocation", fields: [sourceLocationId], references: [id], onDelete: Restrict)
+  destinationLocationId String
+  destinationLocation   Location        @relation("TransferDestinationLocation", fields: [destinationLocationId], references: [id], onDelete: Restrict)
+  createdById           String
+  createdBy             User            @relation("UserTransfers", fields: [createdById], references: [id], onDelete: Restrict)
+  notes                 String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  items InternalTransferItem[]
+
+  @@index([status])
+  @@index([sourceLocationId])
+  @@index([destinationLocationId])
+  @@map("internal_transfers")
+}
+
+model InternalTransferItem {
+  id         String           @id @default(uuid())
+  transferId String
+  transfer   InternalTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity   Float
+  uom        String           @default("Units")
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([transferId])
+  @@index([productId])
+  @@map("internal_transfer_items")
+}
+
+// ==========================================
+// STOCK ADJUSTMENTS
+// ==========================================
+
+model Adjustment {
+  id              String          @id @default(uuid())
+  referenceNumber String          @unique
+  status          OperationStatus @default(DRAFT)
+  locationId      String
+  location        Location        @relation("AdjustmentLocation", fields: [locationId], references: [id], onDelete: Restrict)
+  reason          String?
+  createdById     String
+  createdBy       User            @relation("UserAdjustments", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  items AdjustmentItem[]
+
+  @@index([status])
+  @@index([locationId])
+  @@map("adjustments")
+}
+
+model AdjustmentItem {
+  id             String     @id @default(uuid())
+  adjustmentId   String
+  adjustment     Adjustment @relation(fields: [adjustmentId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+  theoreticalQty Float
+  countedQty     Float
+  differenceQty  Float
+  uom            String     @default("Units")
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([adjustmentId])
+  @@index([productId])
+  @@map("adjustment_items")
+}
+
+// ==========================================
+// STOCK LEDGER / AUDIT AUDIT MOVEMENTS
+// ==========================================
+
+model StockLedger {
+  id                    String        @id @default(uuid())
+  reference             String        // E.g., REC-2026-0001, DEL-2026-0001, TRA-2026-0001, ADJ-2026-0001
+  operationType         OperationType
+  productId             String
+  product               Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  sourceLocationId      String?
+  sourceLocation        Location?     @relation("SourceLocationMovements", fields: [sourceLocationId], references: [id], onDelete: SetNull)
+  destinationLocationId String?
+  destinationLocation   Location?     @relation("DestLocationMovements", fields: [destinationLocationId], references: [id], onDelete: SetNull)
+  quantity              Float
+  uom                   String        @default("Units")
+  performedById         String?
+  performedBy           User?         @relation("UserMovements", fields: [performedById], references: [id], onDelete: SetNull)
+  notes                 String?
+  createdAt             DateTime      @default(now())
+
+  @@index([productId])
+  @@index([operationType])
+  @@index([reference])
+  @@index([createdAt])
+  @@map("stock_ledger")
+}
