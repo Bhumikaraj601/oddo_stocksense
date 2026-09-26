@@ -62,8 +62,26 @@ model User {
   transfersCreated   InternalTransfer[] @relation("UserTransfers")
   adjustmentsCreated Adjustment[]       @relation("UserAdjustments")
   movementsRecorded  StockLedger[]      @relation("UserMovements")
+  passwordResetOtps  PasswordResetOTP[] @relation("UserPasswordResetOtps")
 
   @@map("users")
+}
+
+model PasswordResetOTP {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation("UserPasswordResetOtps", fields: [userId], references: [id], onDelete: Cascade)
+  otpHash     String
+  expiresAt   DateTime
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([createdAt])
+  @@map("password_reset_otps")
 }
 
 // ==========================================
@@ -74,6 +92,7 @@ model Category {
   id          String     @id @default(uuid())
   name        String     @unique
   description String?
+  isActive    Boolean    @default(true)
   parentId    String?
   parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children    Category[] @relation("CategoryHierarchy")
@@ -82,6 +101,8 @@ model Category {
 
   products Product[]
 
+  @@index([name])
+  @@index([isActive])
   @@map("categories")
 }
 
@@ -90,7 +111,7 @@ model Product {
   name        String
   sku         String   @unique
   description String?
-  uom         String   @default("Units") // Unit of measure (e.g., Units, kg, m, L, Box)
+  uom         String   @default("PCS") // Controlled UOM (e.g. PCS, KG, G, L, ML, M, BOX, PACK)
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   isActive    Boolean  @default(true)
@@ -106,8 +127,10 @@ model Product {
   adjustmentItems AdjustmentItem[]
   ledgerEntries   StockLedger[]
 
-  @@index([categoryId])
+  @@index([name])
   @@index([sku])
+  @@index([categoryId])
+  @@index([isActive])
   @@map("products")
 }
 
