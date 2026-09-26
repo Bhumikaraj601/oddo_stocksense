@@ -83,11 +83,11 @@ export default function DashboardPage() {
   const combinedLowAndOutOfStock = kpis.lowStockCount + kpis.outOfStockCount;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Top Page Header */}
       <PageHeader
-        title="Inventory Overview"
-        description="StockSense modular inventory management foundation & real-time operation monitor."
+        title="Inventory Dashboard"
+        description="Monitor stock, operations and inventory activity."
       >
         <Button
           onClick={fetchDashboardData}
@@ -115,10 +115,10 @@ export default function DashboardPage() {
 
       {/* Low Stock Warning Banner if reorders are needed */}
       {combinedLowAndOutOfStock > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/50 dark:bg-amber-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/50 dark:bg-amber-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 shrink-0">
-              <AlertTriangle className="w-5 h-5" />
+            <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 shrink-0">
+              <AlertTriangle className="w-4 h-4" />
             </div>
             <div>
               <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
@@ -137,13 +137,13 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 6 Required KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      {/* 5 Required KPI Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Link href="/products" className="transition-transform hover:-translate-y-0.5">
           <KpiCard
-            title="Total Products"
+            title="Total Stock"
             value={isLoading ? "..." : formatNumber(kpis.totalProducts)}
-            description="Active catalog SKUs"
+            description="Active catalog products"
             icon={Package}
             variant="default"
           />
@@ -156,16 +156,6 @@ export default function DashboardPage() {
             description={`${kpis.outOfStockCount} out of stock, ${kpis.lowStockCount} low`}
             icon={AlertTriangle}
             variant={combinedLowAndOutOfStock > 0 ? "warning" : "default"}
-          />
-        </Link>
-
-        <Link href="/products?stockStatus=OUT_OF_STOCK" className="transition-transform hover:-translate-y-0.5">
-          <KpiCard
-            title="Out of Stock"
-            value={isLoading ? "..." : formatNumber(kpis.outOfStockCount)}
-            description="0 on-hand stock"
-            icon={PackageX}
-            variant={kpis.outOfStockCount > 0 ? "danger" : "default"}
           />
         </Link>
 
@@ -191,7 +181,7 @@ export default function DashboardPage() {
 
         <Link href="/operations/transfers" className="transition-transform hover:-translate-y-0.5">
           <KpiCard
-            title="Internal Transfers"
+            title="Transfers Scheduled"
             value={isLoading ? "..." : formatNumber(kpis.internalTransfersCount)}
             description="Warehouse movements"
             icon={Shuffle}
