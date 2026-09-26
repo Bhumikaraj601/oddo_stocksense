@@ -60,6 +60,7 @@ model User {
   receiptsCreated    Receipt[]          @relation("UserReceipts")
   receiptsValidated  Receipt[]          @relation("UserValidatedReceipts")
   deliveriesCreated  Delivery[]         @relation("UserDeliveries")
+  deliveriesValidated Delivery[]        @relation("UserValidatedDeliveries")
   transfersCreated   InternalTransfer[] @relation("UserTransfers")
   adjustmentsCreated Adjustment[]       @relation("UserAdjustments")
   movementsRecorded  StockLedger[]      @relation("UserMovements")
@@ -152,6 +153,7 @@ model Warehouse {
   // Relationships
   locations    Location[]
   receipts     Receipt[]
+  deliveries   Delivery[]
   reorderRules ReorderRule[]
 
   @@index([name])
@@ -182,6 +184,7 @@ model Location {
   receiptDestinations  Receipt[]          @relation("ReceiptDestinationLocation")
   receiptItems         ReceiptItem[]      @relation("ReceiptItemLocation")
   deliverySources      Delivery[]         @relation("DeliverySourceLocation")
+  deliveryItems        DeliveryItem[]     @relation("DeliveryItemLocation")
   transferSources      InternalTransfer[] @relation("TransferSourceLocation")
   transferDestinations InternalTransfer[] @relation("TransferDestinationLocation")
   adjustments          Adjustment[]       @relation("AdjustmentLocation")
@@ -327,39 +330,53 @@ model ReceiptItem {
 
 model Delivery {
   id               String          @id @default(uuid())
-  referenceNumber  String          @unique
+  referenceNumber  String          @unique // e.g. DEL-000001
   customerName     String
+  warehouseId      String?
+  warehouse        Warehouse?      @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  sourceLocationId String?
+  sourceLocation   Location?       @relation("DeliverySourceLocation", fields: [sourceLocationId], references: [id], onDelete: SetNull)
   status           OperationStatus @default(DRAFT)
   scheduledDate    DateTime?
-  sourceLocationId String
-  sourceLocation   Location        @relation("DeliverySourceLocation", fields: [sourceLocationId], references: [id], onDelete: Restrict)
   createdById      String
   createdBy        User            @relation("UserDeliveries", fields: [createdById], references: [id], onDelete: Restrict)
+  validatedById    String?
+  validatedBy      User?           @relation("UserValidatedDeliveries", fields: [validatedById], references: [id], onDelete: SetNull)
+  validatedAt      DateTime?
   notes            String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
   items DeliveryItem[]
 
+  @@index([referenceNumber])
   @@index([status])
+  @@index([warehouseId])
   @@index([sourceLocationId])
+  @@index([createdById])
+  @@index([createdAt])
   @@map("deliveries")
 }
 
 model DeliveryItem {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   deliveryId        String
-  delivery          Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  delivery          Delivery  @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
   productId         String
-  product           Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
-  quantityDemand    Float
-  quantityDelivered Float    @default(0)
-  uom               String   @default("Units")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  product           Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  locationId        String?
+  location          Location? @relation("DeliveryItemLocation", fields: [locationId], references: [id], onDelete: SetNull)
+  quantityDemand    Float     // Requested quantity
+  pickedQuantity    Float     @default(0)
+  packedQuantity    Float     @default(0)
+  quantityDelivered Float     @default(0)
+  uom               String    @default("PCS")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([deliveryId])
   @@index([productId])
+  @@index([locationId])
   @@map("delivery_items")
 }
 

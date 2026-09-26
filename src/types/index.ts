@@ -10,6 +10,7 @@ import {
   Location,
   Stock,
   ReorderRule,
+  Supplier,
   Receipt,
   ReceiptItem,
   Delivery,
@@ -37,6 +38,7 @@ export type {
   Location,
   Stock,
   ReorderRule,
+  Supplier,
   Receipt,
   ReceiptItem,
   Delivery,
@@ -61,15 +63,20 @@ export type StockWithProductAndLocation = Stock & {
 };
 
 export type ReceiptWithDetails = Receipt & {
-  destinationLocation: Location;
+  supplier?: Supplier | null;
+  warehouse?: Warehouse | null;
+  destinationLocation?: Location | null;
   createdBy: Pick<User, "id" | "name" | "email">;
-  items: (ReceiptItem & { product: Product })[];
+  validatedBy?: Pick<User, "id" | "name" | "email"> | null;
+  items: (ReceiptItem & { product: Product; location?: Location | null })[];
 };
 
 export type DeliveryWithDetails = Delivery & {
-  sourceLocation: Location;
+  warehouse?: Warehouse | null;
+  sourceLocation?: Location | null;
   createdBy: Pick<User, "id" | "name" | "email">;
-  items: (DeliveryItem & { product: Product })[];
+  validatedBy?: Pick<User, "id" | "name" | "email"> | null;
+  items: (DeliveryItem & { product: Product; location?: Location | null })[];
 };
 
 export type InternalTransferWithDetails = InternalTransfer & {
