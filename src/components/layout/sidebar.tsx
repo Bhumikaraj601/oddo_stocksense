@@ -73,7 +73,7 @@ const navItems: NavItem[] = [
       },
       {
         title: "Move History",
-        href: "/operations/ledger",
+        href: "/operations/move-history",
         icon: History,
       },
     ],

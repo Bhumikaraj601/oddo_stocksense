@@ -1,15 +1,14 @@
 import { ledgerRepository } from "@/repositories/ledger.repository";
-import { OperationType } from "@prisma/client";
+import { LedgerQuery, ledgerQuerySchema } from "@/lib/validations/ledger";
 
 export class LedgerService {
-  async listMovements(params?: {
-    productId?: string;
-    operationType?: OperationType;
-    reference?: string;
-    limit?: number;
-    page?: number;
-  }) {
-    return ledgerRepository.listMovements(params);
+  async getMovements(query?: LedgerQuery) {
+    const validated = query ? ledgerQuerySchema.parse(query) : undefined;
+    return ledgerRepository.listMovements(validated);
+  }
+
+  async getStats() {
+    return ledgerRepository.getLedgerStats();
   }
 }
 
